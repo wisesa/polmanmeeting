@@ -5224,7 +5224,7 @@ body {
   inset: 0 0 0 auto !important;
   width: min(52%, 620px) !important;
   height: 100% !important;
-  background-image: url("/images/hero-absensi-meeting-avatar1.png") !important;
+  background-image: url("/images/hero-absensi-meeting-avatar.png") !important;
   background-repeat: no-repeat !important;
   background-position: 28% center !important;
   background-size: contain !important;
@@ -5329,7 +5329,7 @@ body {
     height: 100% !important;
     right: 0 !important;
     bottom: 0 !important;
-    background-image: url("/images/hero-absensi-meeting-avatar1.png") !important;
+    background-image: url("/images/hero-absensi-meeting-avatar.png") !important;
     background-repeat: no-repeat !important;
     background-position: right center !important;
     background-size: contain !important;
