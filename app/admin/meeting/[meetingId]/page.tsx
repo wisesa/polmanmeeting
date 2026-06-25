@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 type PageProps = {
-  params: Promise<{ meetingId: string }> | { meetingId: string };
+  params: Promise<{ meetingId: string }>;
 };
 
 function toJsonSafe<T>(value: T): T {

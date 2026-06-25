@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 type RouteContext = {
-  params: Promise<{ meetingId: string }> | { meetingId: string };
+  params: Promise<{ meetingId: string }>;
 };
 
 function stringValue(value: unknown) {

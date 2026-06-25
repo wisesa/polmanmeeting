@@ -8,7 +8,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 type RouteContext = {
-  params: Promise<{ meetingId: string }> | { meetingId: string };
+  params: Promise<{ meetingId: string }>;
 };
 
 export async function GET(request: NextRequest, context: RouteContext) {
