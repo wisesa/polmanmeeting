@@ -8,7 +8,22 @@ import {
   type ServiceAccount,
 } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
-import { getFirestore } from "firebase-admin/firestore";
+import {
+  FieldValue,
+  getFirestore,
+  Timestamp,
+} from "firebase-admin/firestore";
+
+const ADMIN_APP_NAME = "polman-meeting-admin";
+
+type FirebaseServiceAccountJson = {
+  project_id?: string;
+  projectId?: string;
+  client_email?: string;
+  clientEmail?: string;
+  private_key?: string;
+  privateKey?: string;
+};
 
 function normalizePrivateKey(value?: string) {
   if (!value) return "";
@@ -20,27 +35,44 @@ function normalizePrivateKey(value?: string) {
     .trim();
 }
 
+function parseServiceAccountJson(value: string): ServiceAccount {
+  const parsed = JSON.parse(value) as FirebaseServiceAccountJson;
+
+  const projectId = parsed.project_id || parsed.projectId;
+  const clientEmail = parsed.client_email || parsed.clientEmail;
+  const privateKey = normalizePrivateKey(parsed.private_key || parsed.privateKey);
+
+  if (!projectId || !clientEmail || !privateKey) {
+    throw new Error(
+      "Credential Firebase Admin tidak lengkap. Pastikan project_id, client_email, dan private_key tersedia."
+    );
+  }
+
+  if (!privateKey.includes("BEGIN PRIVATE KEY")) {
+    throw new Error(
+      "FIREBASE_PRIVATE_KEY tidak valid. Private key harus berisi BEGIN PRIVATE KEY."
+    );
+  }
+
+  return {
+    projectId,
+    clientEmail,
+    privateKey,
+  };
+}
+
 function readFirebaseAdminCredential(): ServiceAccount {
-  const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+  const base64 = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
 
-  if (serviceAccountJson) {
-    const parsed = JSON.parse(serviceAccountJson);
+  if (base64) {
+    const json = Buffer.from(base64.trim(), "base64").toString("utf8");
+    return parseServiceAccountJson(json);
+  }
 
-    const projectId = parsed.project_id || parsed.projectId;
-    const clientEmail = parsed.client_email || parsed.clientEmail;
-    const privateKey = normalizePrivateKey(parsed.private_key || parsed.privateKey);
+  const json = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
 
-    if (!projectId || !clientEmail || !privateKey) {
-      throw new Error(
-        "FIREBASE_SERVICE_ACCOUNT_JSON tidak lengkap. Pastikan project_id, client_email, dan private_key tersedia."
-      );
-    }
-
-    return {
-      projectId,
-      clientEmail,
-      privateKey,
-    };
+  if (json) {
+    return parseServiceAccountJson(json);
   }
 
   const projectId =
@@ -52,7 +84,7 @@ function readFirebaseAdminCredential(): ServiceAccount {
 
   if (!projectId || !clientEmail || !privateKey) {
     throw new Error(
-      "Firebase Admin ENV belum lengkap. Isi FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, dan FIREBASE_PRIVATE_KEY di Environment Variables."
+      "Firebase Admin ENV belum lengkap. Isi FIREBASE_SERVICE_ACCOUNT_BASE64, atau FIREBASE_PROJECT_ID + FIREBASE_CLIENT_EMAIL + FIREBASE_PRIVATE_KEY."
     );
   }
 
@@ -64,24 +96,44 @@ function readFirebaseAdminCredential(): ServiceAccount {
 }
 
 export function adminApp() {
-  if (getApps().length > 0) {
-    return getApp();
+  const existingApp = getApps().find((app) => app.name === ADMIN_APP_NAME);
+
+  if (existingApp) {
+    return getApp(ADMIN_APP_NAME);
   }
 
-  const credential = readFirebaseAdminCredential();
+  const serviceAccount = readFirebaseAdminCredential();
 
-  return initializeApp({
-    credential: cert(credential),
-    storageBucket:
-      process.env.FIREBASE_STORAGE_BUCKET ||
-      process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  });
+  return initializeApp(
+    {
+      credential: cert(serviceAccount),
+      projectId: serviceAccount.projectId,
+      storageBucket:
+        process.env.FIREBASE_STORAGE_BUCKET ||
+        process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+    },
+    ADMIN_APP_NAME
+  );
+}
+
+export function firestoreDb() {
+  return getFirestore(adminApp());
 }
 
 export function adminDb() {
-  return getFirestore(adminApp());
+  return firestoreDb();
 }
 
 export function adminAuth() {
   return getAuth(adminApp());
 }
+
+export function serverTimestamp() {
+  return FieldValue.serverTimestamp();
+}
+
+export function increment(value: number) {
+  return FieldValue.increment(value);
+}
+
+export { FieldValue, Timestamp };
