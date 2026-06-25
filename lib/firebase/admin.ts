@@ -1,116 +1,87 @@
 import "server-only";
 
-import { existsSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
-import { cert, getApp, getApps, initializeApp } from "firebase-admin/app";
-import { FieldValue, getFirestore, Timestamp } from "firebase-admin/firestore";
+import {
+  cert,
+  getApp,
+  getApps,
+  initializeApp,
+  type ServiceAccount,
+} from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
+import { getFirestore } from "firebase-admin/firestore";
 
-type ServiceAccountConfig = {
-  projectId: string;
-  clientEmail: string;
-  privateKey: string;
-};
+function normalizePrivateKey(value?: string) {
+  if (!value) return "";
 
-const DEFAULT_LOCAL_SERVICE_ACCOUNT_FILES = [
-  "firebase-service-account.local.json",
-  "service-account.local.json",
-  "polman-635e0-firebase-adminsdk-fbsvc-79d2864d27.json",
-];
-
-function normalizePrivateKey(value: string) {
-  return value.replace(/\\n/g, "\n");
+  return value
+    .replace(/^"|"$/g, "")
+    .replace(/\\n/g, "\n")
+    .replace(/\r\n/g, "\n")
+    .trim();
 }
 
-function optionalEnv(name: string) {
-  return process.env[name]?.trim() || "";
-}
+function readFirebaseAdminCredential(): ServiceAccount {
+  const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
 
-function requiredEnv(name: string) {
-  const value = optionalEnv(name);
+  if (serviceAccountJson) {
+    const parsed = JSON.parse(serviceAccountJson);
 
-  if (!value) {
-    throw new Error(`Missing environment variable: ${name}`);
+    const projectId = parsed.project_id || parsed.projectId;
+    const clientEmail = parsed.client_email || parsed.clientEmail;
+    const privateKey = normalizePrivateKey(parsed.private_key || parsed.privateKey);
+
+    if (!projectId || !clientEmail || !privateKey) {
+      throw new Error(
+        "FIREBASE_SERVICE_ACCOUNT_JSON tidak lengkap. Pastikan project_id, client_email, dan private_key tersedia."
+      );
+    }
+
+    return {
+      projectId,
+      clientEmail,
+      privateKey,
+    };
   }
 
-  return value;
-}
+  const projectId =
+    process.env.FIREBASE_PROJECT_ID ||
+    process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 
-function serviceAccountFromJsonText(jsonText: string): ServiceAccountConfig {
-  const parsed = JSON.parse(jsonText) as Record<string, unknown>;
-  const projectId = String(parsed.project_id || "").trim();
-  const clientEmail = String(parsed.client_email || "").trim();
-  const privateKey = String(parsed.private_key || "").trim();
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+  const privateKey = normalizePrivateKey(process.env.FIREBASE_PRIVATE_KEY);
 
   if (!projectId || !clientEmail || !privateKey) {
     throw new Error(
-      "Service account JSON wajib berisi project_id, client_email, dan private_key."
+      "Firebase Admin ENV belum lengkap. Isi FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, dan FIREBASE_PRIVATE_KEY di Environment Variables."
     );
   }
 
   return {
     projectId,
     clientEmail,
-    privateKey: normalizePrivateKey(privateKey),
+    privateKey,
   };
 }
 
-function serviceAccountFromFile(jsonPath: string): ServiceAccountConfig {
-  const absolutePath = resolve(/* turbopackIgnore: true */ process.cwd(), jsonPath);
-  return serviceAccountFromJsonText(readFileSync(absolutePath, "utf8"));
-}
-
-function findDefaultLocalServiceAccountPath() {
-  for (const fileName of DEFAULT_LOCAL_SERVICE_ACCOUNT_FILES) {
-    const absolutePath = resolve(/* turbopackIgnore: true */ process.cwd(), fileName);
-    if (existsSync(absolutePath)) return fileName;
+export function adminApp() {
+  if (getApps().length > 0) {
+    return getApp();
   }
 
-  return "";
+  const credential = readFirebaseAdminCredential();
+
+  return initializeApp({
+    credential: cert(credential),
+    storageBucket:
+      process.env.FIREBASE_STORAGE_BUCKET ||
+      process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  });
 }
 
-function loadServiceAccount(): ServiceAccountConfig {
-  const jsonFromEnv = optionalEnv("FIREBASE_SERVICE_ACCOUNT_JSON");
-  if (jsonFromEnv) return serviceAccountFromJsonText(jsonFromEnv);
-
-  const jsonPathFromEnv = optionalEnv("FIREBASE_SERVICE_ACCOUNT_PATH");
-  if (jsonPathFromEnv) return serviceAccountFromFile(jsonPathFromEnv);
-
-  const defaultJsonPath = findDefaultLocalServiceAccountPath();
-  if (defaultJsonPath) return serviceAccountFromFile(defaultJsonPath);
-
-  return {
-    projectId: requiredEnv("FIREBASE_PROJECT_ID"),
-    clientEmail: requiredEnv("FIREBASE_CLIENT_EMAIL"),
-    privateKey: normalizePrivateKey(requiredEnv("FIREBASE_PRIVATE_KEY")),
-  };
-}
-
-const serviceAccount = loadServiceAccount();
-
-export const firebaseAdminApp =
-  getApps().length > 0
-    ? getApp()
-    : initializeApp({
-        credential: cert(serviceAccount),
-        projectId: serviceAccount.projectId,
-      });
-
-const firestore = getFirestore(firebaseAdminApp);
-const auth = getAuth(firebaseAdminApp);
-
-// Jangan panggil firestore.settings() di Next.js dev mode.
-// Saat hot reload, Firestore bisa sudah dipakai lebih dulu, lalu settings() akan error.
-// Nilai undefined dibersihkan di lib/firebase/db.ts lewat cleanFirestoreData().
-export function firestoreDb() {
-  return firestore;
+export function adminDb() {
+  return getFirestore(adminApp());
 }
 
 export function adminAuth() {
-  return auth;
+  return getAuth(adminApp());
 }
-
-export const db = firestore;
-export const serverTimestamp = FieldValue.serverTimestamp;
-export const increment = FieldValue.increment;
-export { Timestamp };
