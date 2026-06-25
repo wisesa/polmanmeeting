@@ -35,7 +35,7 @@ export default async function HomePage(context: { searchParams?: HomeSearchParam
 
   return (
     <main className="appShell">
-      <section className="heroPanel">
+      <section className="heroPanel homeHeroPanel">
         <div className="heroGlow" />
         <div className="heroContent">
           <div>
