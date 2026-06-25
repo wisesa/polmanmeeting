@@ -5365,3 +5365,165 @@ body {
     opacity: 0.44 !important;
   }
 }
+
+/* =========================
+   HOME HERO AVATAR TRANSPARENT FINAL
+   Pakai avatar transparan agar background putih avatar hilang.
+========================= */
+
+.homeHeroPanel {
+  position: relative !important;
+  overflow: hidden !important;
+  background:
+    radial-gradient(circle at 76% 30%, rgba(147, 197, 253, 0.26) 0%, rgba(147, 197, 253, 0.08) 22%, transparent 42%),
+    linear-gradient(90deg, #1e3a8a 0%, #2563eb 50%, #7dd3fc 100%) !important;
+  background-color: #2563eb !important;
+}
+
+.homeHeroPanel::after {
+  content: "" !important;
+  position: absolute !important;
+  right: 18px !important;
+  bottom: 0 !important;
+  width: min(24vw, 260px) !important;
+  height: 94% !important;
+  background-image: url("/images/hero-absensi-meeting-avatar.png") !important;
+  background-repeat: no-repeat !important;
+  background-position: center bottom !important;
+  background-size: contain !important;
+  pointer-events: none !important;
+  z-index: 0 !important;
+  opacity: 0.96 !important;
+}
+
+.homeHeroPanel .heroContent {
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+.homeHeroPanel .heroContent > div:first-child {
+  max-width: min(64%, 700px) !important;
+}
+
+.homeHeroPanel .heroMetric {
+  position: relative !important;
+  z-index: 1 !important;
+  backdrop-filter: blur(10px) !important;
+}
+
+@media (max-width: 960px) {
+  .homeHeroPanel::after {
+    right: 10px !important;
+    width: min(26vw, 220px) !important;
+    height: 90% !important;
+  }
+
+  .homeHeroPanel .heroContent > div:first-child {
+    max-width: 66% !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .homeHeroPanel {
+    background:
+      radial-gradient(circle at 78% 32%, rgba(147, 197, 253, 0.20) 0%, rgba(147, 197, 253, 0.08) 24%, transparent 42%),
+      linear-gradient(135deg, #1e3a8a 0%, #2563eb 60%, #38bdf8 100%) !important;
+    background-color: #2563eb !important;
+  }
+
+  .homeHeroPanel::after {
+    right: 6px !important;
+    width: min(34vw, 170px) !important;
+    height: 86% !important;
+    background-position: center bottom !important;
+    background-size: contain !important;
+    opacity: 0.34 !important;
+  }
+
+  .homeHeroPanel .heroContent > div:first-child {
+    max-width: 100% !important;
+  }
+
+  .homeHeroPanel .heroMetric {
+    background: rgba(147, 197, 253, 0.22) !important;
+    border-color: rgba(255,255,255,0.28) !important;
+  }
+}
+
+@media (max-width: 520px) {
+  .homeHeroPanel {
+    background:
+      radial-gradient(circle at 82% 30%, rgba(147, 197, 253, 0.18) 0%, rgba(147, 197, 253, 0.06) 24%, transparent 44%),
+      linear-gradient(135deg, #1e3a8a 0%, #2563eb 62%, #38bdf8 100%) !important;
+  }
+
+  .homeHeroPanel::after {
+    right: 4px !important;
+    width: 38% !important;
+    height: 82% !important;
+    opacity: 0.28 !important;
+  }
+}
+
+/* =========================
+   HOME HERO METRIC BLUE OVERLAY FINAL
+   Overlay biru yang menyatu dan lebih terlihat.
+========================= */
+
+.homeHeroPanel .heroMetric {
+  position: relative !important;
+  z-index: 2 !important;
+  min-width: 148px !important;
+  border: 1px solid rgba(191, 219, 254, 0.62) !important;
+  background:
+    linear-gradient(135deg, rgba(59, 130, 246, 0.42) 0%, rgba(96, 165, 250, 0.36) 50%, rgba(125, 211, 252, 0.28) 100%) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 16px 40px rgba(30, 64, 175, 0.20) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+
+.homeHeroPanel .heroMetric strong,
+.homeHeroPanel .heroMetric span {
+  position: relative !important;
+  z-index: 1 !important;
+  color: #ffffff !important;
+  text-shadow: 0 1px 1px rgba(30, 41, 59, 0.18) !important;
+}
+
+.homeHeroPanel .heroMetric span {
+  color: rgba(239, 246, 255, 0.96) !important;
+  font-weight: 600 !important;
+}
+
+.homeHeroPanel .heroMetric::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 !important;
+  border-radius: inherit !important;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.04) 36%, rgba(255,255,255,0.00) 100%);
+  pointer-events: none !important;
+}
+
+@media (max-width: 720px) {
+  .homeHeroPanel .heroMetric {
+    width: 100% !important;
+    min-width: 0 !important;
+    background:
+      linear-gradient(135deg, rgba(59, 130, 246, 0.46) 0%, rgba(96, 165, 250, 0.40) 55%, rgba(125, 211, 252, 0.30) 100%) !important;
+    border-color: rgba(191, 219, 254, 0.70) !important;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.24),
+      0 12px 30px rgba(30, 64, 175, 0.18) !important;
+  }
+
+  .homeHeroPanel .heroMetric strong {
+    font-size: 34px !important;
+  }
+
+  .homeHeroPanel .heroMetric span {
+    font-size: 15px !important;
+  }
+}
