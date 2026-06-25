@@ -5206,93 +5206,115 @@ body {
 }
 
 /* =========================
-   MOBILE FACE GUIDE FIX
-   Perbesar area wajah dan sejajarkan edge/corner dengan oval.
+   FIX KARTU DATA WAJAH DOSEN
+   - mencegah overlap foto, info, TTD, dan tombol aksi
+   - layout tetap rapi di mobile dan nama panjang
 ========================= */
+.faceListGrid {
+  align-items: stretch;
+}
+
+.faceCard {
+  grid-template-columns: clamp(96px, 22vw, 118px) minmax(0, 1fr);
+  align-items: start;
+  overflow: hidden;
+}
+
+.facePreviewFrame {
+  width: 100%;
+  min-height: 0;
+  aspect-ratio: 3 / 4;
+  align-self: start;
+}
+
+.faceCardMain {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.faceCardTopline,
+.faceCardMain .muted,
+.faceMetaGrid,
+.faceSignatureMini,
+.faceSignatureStatus {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.faceCardTopline h3 {
+  display: block;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.22;
+}
+
+.faceCardMain .muted {
+  overflow-wrap: anywhere;
+  line-height: 1.45;
+}
+
+.faceMetaGrid span {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  line-height: 1.25;
+}
+
+.faceSignatureMini {
+  width: min(180px, 100%);
+  box-sizing: border-box;
+}
+
+.faceSignatureStatus {
+  box-sizing: border-box;
+}
+
+.faceCardActions {
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
 @media (max-width: 640px) {
-  .cameraPreview .faceGuideOval,
-  .registerPreview .faceGuideOval,
-  .cameraAttendance .faceGuideOval,
-  .cameraAttendanceEmbedded .faceGuideOval,
-  .meetingDetailPage .meetingInlineAttendance .faceGuideOval {
-    width: 64% !important;
-    height: 74% !important;
-    max-width: 250px !important;
-    max-height: 292px !important;
-    border-width: 2.5px !important;
+  .faceListGrid {
+    margin-inline: 0;
   }
 
-  .cameraPreview .faceGuideCorner,
-  .registerPreview .faceGuideCorner,
-  .cameraAttendance .faceGuideCorner,
-  .cameraAttendanceEmbedded .faceGuideCorner,
-  .meetingDetailPage .meetingInlineAttendance .faceGuideCorner {
-    width: 24px !important;
-    height: 24px !important;
-    border-width: 3px !important;
+  .faceCard {
+    grid-template-columns: minmax(86px, 28vw) minmax(0, 1fr);
+    gap: 12px;
+    padding: 14px;
   }
 
-  .cameraPreview .faceGuideCorner.topLeft,
-  .registerPreview .faceGuideCorner.topLeft,
-  .cameraAttendance .faceGuideCorner.topLeft,
-  .cameraAttendanceEmbedded .faceGuideCorner.topLeft,
-  .meetingDetailPage .meetingInlineAttendance .faceGuideCorner.topLeft {
-    top: -3px !important;
-    left: -3px !important;
-    border-width: 3px 0 0 3px !important;
+  .facePreviewFrame {
+    border-radius: 18px;
   }
 
-  .cameraPreview .faceGuideCorner.topRight,
-  .registerPreview .faceGuideCorner.topRight,
-  .cameraAttendance .faceGuideCorner.topRight,
-  .cameraAttendanceEmbedded .faceGuideCorner.topRight,
-  .meetingDetailPage .meetingInlineAttendance .faceGuideCorner.topRight {
-    top: -3px !important;
-    right: -3px !important;
-    border-width: 3px 3px 0 0 !important;
-  }
-
-  .cameraPreview .faceGuideCorner.bottomLeft,
-  .registerPreview .faceGuideCorner.bottomLeft,
-  .cameraAttendance .faceGuideCorner.bottomLeft,
-  .cameraAttendanceEmbedded .faceGuideCorner.bottomLeft,
-  .meetingDetailPage .meetingInlineAttendance .faceGuideCorner.bottomLeft {
-    bottom: -3px !important;
-    left: -3px !important;
-    border-width: 0 0 3px 3px !important;
-  }
-
-  .cameraPreview .faceGuideCorner.bottomRight,
-  .registerPreview .faceGuideCorner.bottomRight,
-  .cameraAttendance .faceGuideCorner.bottomRight,
-  .cameraAttendanceEmbedded .faceGuideCorner.bottomRight,
-  .meetingDetailPage .meetingInlineAttendance .faceGuideCorner.bottomRight {
-    right: -3px !important;
-    bottom: -3px !important;
-    border-width: 0 3px 3px 0 !important;
-  }
-
-  .cameraPreview .faceGuideText,
-  .registerPreview .faceGuideText,
-  .cameraAttendance .faceGuideText,
-  .cameraAttendanceEmbedded .faceGuideText,
-  .meetingDetailPage .meetingInlineAttendance .faceGuideText {
-    bottom: 14px !important;
-    max-width: 86% !important;
-    padding: 7px 12px !important;
-    font-size: 12px !important;
+  .faceCardActions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+    padding-top: 12px;
   }
 }
 
-@media (max-width: 390px) {
-  .cameraPreview .faceGuideOval,
-  .registerPreview .faceGuideOval,
-  .cameraAttendance .faceGuideOval,
-  .cameraAttendanceEmbedded .faceGuideOval,
-  .meetingDetailPage .meetingInlineAttendance .faceGuideOval {
-    width: 68% !important;
-    height: 76% !important;
-    max-width: 238px !important;
-    max-height: 270px !important;
+@media (max-width: 420px) {
+  .faceCard {
+    grid-template-columns: 1fr;
+  }
+
+  .facePreviewFrame {
+    width: min(190px, 100%);
+    justify-self: center;
+  }
+
+  .faceCardActions {
+    flex-direction: row;
+  }
+
+  .faceCardActions .ghostButton,
+  .faceCardActions .dangerButton {
+    flex: 1 1 110px;
   }
 }

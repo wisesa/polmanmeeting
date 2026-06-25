@@ -238,6 +238,20 @@ function faceProdiDisplay(face: FaceSummary) {
   return face.prodiName || face.prodi || "-";
 }
 
+const faceNameCollator = new Intl.Collator("id-ID", {
+  numeric: true,
+  sensitivity: "base",
+});
+
+function sortFacesByName(faces: FaceSummary[]) {
+  return [...faces].sort((a, b) => {
+    const nameCompare = faceNameCollator.compare(a.name || "", b.name || "");
+    if (nameCompare !== 0) return nameCompare;
+
+    return faceNameCollator.compare(a.nameKey || a.nodeKey || "", b.nameKey || b.nodeKey || "");
+  });
+}
+
 function faceThumbnailSrc(face: FaceSummary) {
   return dataUrlFromBase64(face.faceThumbnailBase64, face.faceThumbnailMimeType || "image/jpeg");
 }
@@ -272,6 +286,7 @@ export default function RegisterFaceClient({ initialFaces, prodiOptions, mode = 
   const lookupProdiOptions = useMemo(() => toProdiLookupOptions(prodiOptions), [prodiOptions]);
   const isDosenMode = mode === "dosen";
   const canDelete = allowDelete ?? !isDosenMode;
+  const sortedFaces = useMemo(() => sortFacesByName(faces), [faces]);
 
   useEffect(() => {
     if (!result) return;
@@ -957,7 +972,7 @@ export default function RegisterFaceClient({ initialFaces, prodiOptions, mode = 
           </div>
         ) : (
           <div className="faceListGrid">
-            {faces.map((face) => {
+            {sortedFaces.map((face) => {
               const thumbnailSrc = faceThumbnailSrc(face);
               const faceKey = face.nameKey || face.nodeKey;
 
