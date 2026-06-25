@@ -1,0 +1,506 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { useToast } from "@/components/ToastProvider";
+
+type FaceApiModule = typeof import("face-api.js");
+
+type VerifyResponse = {
+  success?: boolean;
+  matched?: boolean;
+  recognized?: boolean;
+  message?: string;
+  meetingId?: string;
+  name?: string;
+  nameKey?: string;
+  score?: number;
+  distance?: number;
+  threshold?: number;
+};
+
+type CameraAttendanceProps = {
+  meetingId: string;
+  variant?: "standalone" | "embedded";
+  onAttendanceSuccess?: () => void | Promise<void>;
+};
+
+type CameraStatus =
+  | "idle"
+  | "checking"
+  | "loading-model"
+  | "starting"
+  | "ready"
+  | "capturing"
+  | "error";
+
+let faceApiPromise: Promise<FaceApiModule> | null = null;
+let faceApiLoaded = false;
+
+function isAttendanceSuccess(result: VerifyResponse | null) {
+  if (!result) return false;
+
+  return Boolean(
+    result.success === true &&
+      (result.matched === true || result.recognized === true)
+  );
+}
+
+function normalizeVerifyResponse(data: VerifyResponse): VerifyResponse {
+  const success = Boolean(
+    data.success === true &&
+      (data.matched === true || data.recognized === true)
+  );
+
+  return {
+    ...data,
+    success,
+    matched: success,
+    recognized: success,
+  };
+}
+
+function formatNumber(value?: number) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "-";
+  return value.toFixed(4);
+}
+
+async function loadFaceApiModels(addDebug: (message: string) => void) {
+  const modelUrl = process.env.NEXT_PUBLIC_FACE_API_MODEL_URL || "/models/face-api";
+
+  if (!faceApiPromise) {
+    faceApiPromise = import("face-api.js");
+  }
+
+  const faceapi = await faceApiPromise;
+
+  if (!faceApiLoaded) {
+    addDebug(`Memuat model face-api.js dari ${modelUrl}.`);
+
+    await Promise.all([
+      faceapi.nets.tinyFaceDetector.loadFromUri(modelUrl),
+      faceapi.nets.faceLandmark68Net.loadFromUri(modelUrl),
+      faceapi.nets.faceRecognitionNet.loadFromUri(modelUrl),
+    ]);
+
+    faceApiLoaded = true;
+    addDebug("Model face-api.js siap.");
+  }
+
+  return faceapi;
+}
+
+async function detectDescriptorFromVideo(
+  video: HTMLVideoElement,
+  faceapi: FaceApiModule
+) {
+  const videoWidth = video.videoWidth;
+  const videoHeight = video.videoHeight;
+
+  if (!videoWidth || !videoHeight) {
+    throw new Error("Kamera belum siap. Tunggu preview muncul dulu.");
+  }
+
+  const options = new faceapi.TinyFaceDetectorOptions({
+    inputSize: 320,
+    scoreThreshold: 0.5,
+  });
+
+  const result = await faceapi
+    .detectSingleFace(video, options)
+    .withFaceLandmarks()
+    .withFaceDescriptor();
+
+  if (!result) {
+    throw new Error("Wajah tidak terdeteksi. Posisikan wajah di area panduan dan coba lagi.");
+  }
+
+  const descriptor = Array.from(result.descriptor).map((item) => Number(item));
+
+  if (descriptor.length !== 128) {
+    throw new Error("Descriptor face-api.js tidak valid. Ukuran harus 128 angka.");
+  }
+
+  return descriptor;
+}
+
+export default function CameraAttendance({
+  meetingId,
+  variant = "standalone",
+  onAttendanceSuccess,
+}: CameraAttendanceProps) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  const [status, setStatus] = useState<CameraStatus>("idle");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [result, setResult] = useState<VerifyResponse | null>(null);
+  const [showDebug, setShowDebug] = useState(false);
+  const toast = useToast();
+
+  useEffect(() => {
+    setShowDebug(false);
+  }, [meetingId]);
+
+  const [debugLines, setDebugLines] = useState<string[]>([
+    "Debug siap.",
+    "Tekan tombol Buka Kamera.",
+  ]);
+
+  const isBusy =
+    status === "checking" ||
+    status === "loading-model" ||
+    status === "starting" ||
+    status === "capturing";
+
+  const isCameraReady = status === "ready";
+  useEffect(() => {
+    if (!result) return;
+
+    if (isAttendanceSuccess(result)) {
+      toast.success("Absensi berhasil", result.message || "Absensi berhasil disimpan.");
+      return;
+    }
+
+    toast.error("Absensi belum berhasil", result.message || "Wajah belum dikenali. Silakan coba lagi.");
+  }, [result, toast]);
+
+  function addDebug(message: string) {
+    const time = new Date().toLocaleTimeString("id-ID");
+
+    setDebugLines((current) => [
+      `[${time}] ${message}`,
+      ...current.slice(0, 11),
+    ]);
+
+    console.log("[camera-debug]", message);
+  }
+
+  async function getPermissionState() {
+    try {
+      if (!navigator.permissions?.query) return "unknown";
+
+      const permission = await navigator.permissions.query({
+        name: "camera" as PermissionName,
+      });
+
+      return permission.state;
+    } catch {
+      return "unknown";
+    }
+  }
+
+  async function checkBrowserSupport() {
+    addDebug(`URL: ${window.location.href}`);
+    addDebug(`Protocol: ${window.location.protocol}`);
+    addDebug(`Secure context: ${String(window.isSecureContext)}`);
+    addDebug(`navigator.mediaDevices: ${String(Boolean(navigator.mediaDevices))}`);
+    addDebug(
+      `getUserMedia: ${String(Boolean(navigator.mediaDevices?.getUserMedia))}`
+    );
+    addDebug(`Camera permission: ${await getPermissionState()}`);
+    addDebug(`User agent: ${navigator.userAgent}`);
+  }
+
+  function stopCamera() {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+  }
+
+  async function startCamera() {
+    try {
+      addDebug("Tombol Buka Kamera diklik.");
+
+      setStatus("checking");
+      setErrorMessage("");
+      setResult(null);
+
+      stopCamera();
+
+      await checkBrowserSupport();
+
+      if (!window.isSecureContext) {
+        throw new Error(
+          "Halaman belum HTTPS. Buka URL https dari ngrok, bukan http."
+        );
+      }
+
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error(
+          "Browser tidak menyediakan getUserMedia. Cek izin kamera Chrome."
+        );
+      }
+
+      setStatus("loading-model");
+      await loadFaceApiModels(addDebug);
+
+      setStatus("starting");
+      addDebug("Meminta izin kamera ke browser.");
+
+      let stream: MediaStream;
+
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: "user" },
+            width: { ideal: 640 },
+            height: { ideal: 640 },
+          },
+          audio: false,
+        });
+
+        addDebug("getUserMedia sukses dengan facingMode user.");
+      } catch {
+        addDebug("facingMode user gagal. Coba video true.");
+
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: false,
+        });
+
+        addDebug("getUserMedia sukses dengan video true.");
+      }
+
+      streamRef.current = stream;
+
+      if (!videoRef.current) {
+        throw new Error("Elemen video belum tersedia.");
+      }
+
+      videoRef.current.srcObject = stream;
+      videoRef.current.muted = true;
+      videoRef.current.playsInline = true;
+
+      await videoRef.current.play();
+
+      const track = stream.getVideoTracks()[0];
+      const settings = track?.getSettings?.();
+
+      addDebug(`Track aktif: ${track?.label || "unknown"}`);
+      addDebug(`Ukuran video: ${settings?.width || "-"} x ${settings?.height || "-"}`);
+
+      setStatus("ready");
+      addDebug("Preview kamera siap.");
+    } catch (error) {
+      const errorName =
+        error instanceof DOMException ? error.name : "CameraError";
+
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Kamera tidak bisa dibuka.";
+
+      addDebug(`ERROR ${errorName}: ${message}`);
+
+      setStatus("error");
+      setErrorMessage(`${errorName}: ${message}`);
+      toast.error("Kamera gagal dibuka", `${errorName}: ${message}`);
+    }
+  }
+
+  async function handleAttendance() {
+    try {
+      if (!videoRef.current) {
+        throw new Error("Video kamera tidak tersedia.");
+      }
+
+      addDebug("Mulai proses ambil absen dengan face-api.js.");
+
+      setStatus("capturing");
+      setErrorMessage("");
+      setResult(null);
+
+      const faceapi = await loadFaceApiModels(addDebug);
+      const descriptor = await detectDescriptorFromVideo(videoRef.current, faceapi);
+
+      addDebug(`Descriptor dibuat. Panjang: ${descriptor.length}.`);
+
+      const response = await fetch("/api/attendance/verify-descriptor", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          meetingId,
+          descriptor,
+        }),
+      });
+
+      addDebug(`API response status: ${response.status}`);
+
+      const data = (await response.json()) as VerifyResponse;
+      const normalizedData = normalizeVerifyResponse(data);
+
+      setResult(normalizedData);
+      setStatus("ready");
+
+      if (normalizedData.success && onAttendanceSuccess) {
+        await onAttendanceSuccess();
+      }
+
+      addDebug(
+        normalizedData.success
+          ? "Absensi berhasil."
+          : normalizedData.message || "Absensi belum dikenali."
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Absensi gagal diproses.";
+
+      addDebug(`ERROR attendance: ${message}`);
+
+      setStatus("ready");
+      setResult({
+        success: false,
+        matched: false,
+        recognized: false,
+        message,
+      });
+    }
+  }
+
+  useEffect(() => {
+    addDebug("Component CameraAttendance mounted.");
+
+    return () => {
+      stopCamera();
+    };
+  }, []);
+
+  return (
+    <div
+      className={
+        variant === "embedded"
+          ? "cameraAttendance cameraAttendanceEmbedded"
+          : "cameraAttendance"
+      }
+    >
+      <div className="cameraShell">
+        <div className="cameraHeader">
+          <p className="eyebrow">Presensi Wajah</p>
+          {variant === "embedded" ? (
+            <h2>Form Absensi Wajah</h2>
+          ) : (
+            <h1>Absen dengan Wajah</h1>
+          )}
+          <p className="muted">
+            Buka kamera, posisikan wajah di area panduan, lalu tekan tombol
+            Ambil Absen.
+          </p>
+        </div>
+
+        <div className="cameraPreview">
+          <video
+            ref={videoRef}
+            className="cameraVideo"
+            playsInline
+            muted
+            autoPlay
+          />
+
+          <div className="faceGuideLayer" aria-hidden="true">
+            <div className="faceGuideOval">
+              <span className="faceGuideCorner topLeft" />
+              <span className="faceGuideCorner topRight" />
+              <span className="faceGuideCorner bottomLeft" />
+              <span className="faceGuideCorner bottomRight" />
+            </div>
+
+            <div className="faceGuideText">
+              Posisikan wajah di dalam area ini
+            </div>
+          </div>
+
+          {status === "idle" && (
+            <div className="cameraOverlay">
+              <span>Tekan tombol Buka Kamera</span>
+            </div>
+          )}
+
+          {status === "checking" && (
+            <div className="cameraOverlay">
+              <span>Mengecek izin kamera...</span>
+            </div>
+          )}
+
+          {status === "loading-model" && (
+            <div className="cameraOverlay">
+              <span>Memuat model face-api.js...</span>
+            </div>
+          )}
+
+          {status === "starting" && (
+            <div className="cameraOverlay">
+              <span>Mengaktifkan kamera...</span>
+            </div>
+          )}
+
+          {status === "error" && (
+            <div className="cameraOverlay error">
+              <span>{errorMessage}</span>
+            </div>
+          )}
+        </div>
+
+        <div className="cameraActions">
+          {(status === "idle" || status === "error") && (
+            <button
+              type="button"
+              className="primaryButton"
+              onClick={startCamera}
+              disabled={isBusy}
+            >
+              Buka Kamera
+            </button>
+          )}
+
+          {status === "ready" && (
+            <button
+              type="button"
+              className="primaryButton"
+              onClick={handleAttendance}
+              disabled={!isCameraReady || isBusy}
+            >
+              Ambil Absen
+            </button>
+          )}
+
+          {status === "ready" && (
+            <button
+              type="button"
+              className="ghostButton"
+              onClick={startCamera}
+              disabled={isBusy}
+            >
+              Muat Ulang Kamera
+            </button>
+          )}
+
+          <button
+            type="button"
+            className="ghostButton cameraDebugToggle"
+            onClick={() => setShowDebug((current) => !current)}
+          >
+            {showDebug ? "Sembunyikan Debug Camera" : "Tampilkan Debug Camera"}
+          </button>
+        </div>
+
+
+        {showDebug && (
+          <div className="cameraDebugBox">
+            <strong>Camera Debug</strong>
+
+            {debugLines.map((line, index) => (
+              <span key={`${line}-${index}`}>{line}</span>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

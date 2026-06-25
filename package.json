@@ -1,0 +1,31 @@
+{
+  "name": "polman-next-meeting",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "setup:firebase": "node scripts/setup-firebase-env.mjs",
+    "verify:firestore": "node scripts/verify-firestore-only.mjs",
+    "clean": "node scripts/verify-firestore-only.mjs && rm -rf .next node_modules package-lock.json"
+  },
+  "dependencies": {
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "eslint": "latest",
+    "eslint-config-next": "latest",
+    "face-api.js": "0.22.2",
+    "firebase-admin": "latest",
+    "next": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "typescript": "latest",
+    "firebase": "latest",
+    "pdfkit": "latest",
+    "@types/pdfkit": "latest"
+  },
+  "devDependencies": {}
+}
