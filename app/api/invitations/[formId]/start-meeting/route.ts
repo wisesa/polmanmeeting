@@ -6,7 +6,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 type RouteContext = {
-  params: Promise<{ formId: string }> | { formId: string };
+  params: Promise<{ formId: string }>;
 };
 
 export async function POST(request: NextRequest, context: RouteContext) {

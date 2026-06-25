@@ -8,9 +8,7 @@ export const revalidate = 0;
 type RouteContext = {
   params: Promise<{
     meetingId: string;
-  }> | {
-    meetingId: string;
-  };
+  }>;
 };
 
 export async function GET(_request: NextRequest, context: RouteContext) {

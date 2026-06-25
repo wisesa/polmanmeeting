@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 type RouteContext = {
-  params: Promise<{ nameKey: string }> | { nameKey: string };
+  params: Promise<{ nameKey: string }>;
 };
 
 function stringValue(value: unknown) {

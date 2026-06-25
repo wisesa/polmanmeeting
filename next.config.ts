@@ -19,6 +19,10 @@ const nextConfig: NextConfig = {
         ...config.resolve.fallback,
         fs: false,
       };
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        encoding: false,
+      };
     }
 
     return config;
