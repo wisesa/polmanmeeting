@@ -5527,3 +5527,85 @@ body {
     font-size: 15px !important;
   }
 }
+
+/* =========================
+   HOME HERO AVATAR POSITION AND DARK METRIC FIX
+   Avatar digeser lebih ke kiri agar lebih tengah,
+   overlay meeting dibuat lebih gelap agar teks jelas.
+========================= */
+
+.homeHeroPanel::after {
+  right: 78px !important;
+  width: min(26vw, 292px) !important;
+  height: 96% !important;
+  opacity: 0.98 !important;
+  background-position: center bottom !important;
+  background-size: contain !important;
+}
+
+.homeHeroPanel .heroMetric {
+  border-color: rgba(147, 197, 253, 0.62) !important;
+  background:
+    linear-gradient(135deg, rgba(30, 64, 175, 0.78) 0%, rgba(37, 99, 235, 0.70) 54%, rgba(14, 116, 144, 0.62) 100%) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 18px 42px rgba(15, 23, 42, 0.26) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+
+.homeHeroPanel .heroMetric strong {
+  color: #ffffff !important;
+  text-shadow: 0 2px 4px rgba(15, 23, 42, 0.38) !important;
+}
+
+.homeHeroPanel .heroMetric span {
+  color: rgba(255, 255, 255, 0.96) !important;
+  font-weight: 700 !important;
+  text-shadow: 0 1px 3px rgba(15, 23, 42, 0.34) !important;
+}
+
+.homeHeroPanel .heroMetric::before {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.03) 46%, rgba(255,255,255,0.00) 100%) !important;
+}
+
+@media (max-width: 1080px) {
+  .homeHeroPanel::after {
+    right: 60px !important;
+    width: min(28vw, 260px) !important;
+    height: 94% !important;
+  }
+}
+
+@media (max-width: 960px) {
+  .homeHeroPanel::after {
+    right: 48px !important;
+    width: min(30vw, 236px) !important;
+    height: 92% !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .homeHeroPanel::after {
+    right: 20px !important;
+    width: min(38vw, 190px) !important;
+    height: 88% !important;
+    opacity: 0.42 !important;
+  }
+
+  .homeHeroPanel .heroMetric {
+    background:
+      linear-gradient(135deg, rgba(30, 64, 175, 0.76) 0%, rgba(37, 99, 235, 0.68) 58%, rgba(14, 116, 144, 0.58) 100%) !important;
+    border-color: rgba(191, 219, 254, 0.56) !important;
+  }
+}
+
+@media (max-width: 520px) {
+  .homeHeroPanel::after {
+    right: 12px !important;
+    width: 44% !important;
+    height: 84% !important;
+    opacity: 0.34 !important;
+  }
+}
