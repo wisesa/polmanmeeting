@@ -10,7 +10,7 @@ export const revalidate = 0;
 const PAGE_SIZE = 20;
 
 type PageProps = {
-  searchParams?: Promise<Record<string, string | string[] | undefined>> | Record<string, string | string[] | undefined>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
 
 function toJsonSafe<T>(value: T): T {
@@ -54,7 +54,7 @@ function toProdiOptions(prodi: MasterProdi[]) {
 export default async function AdminUndanganPage({ searchParams }: PageProps) {
   await requireAdminSession("/admin/undangan");
 
-  const resolvedSearchParams = await Promise.resolve(searchParams || {});
+  const resolvedSearchParams = searchParams ? await searchParams : {};
   const monthKey = normalizeMonthKey(firstParam(resolvedSearchParams.month), currentMonthKey());
   const page = pageNumber(resolvedSearchParams.page);
 

@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 type PageProps = {
-  searchParams?: Promise<{ next?: string }> | { next?: string };
+  searchParams?: Promise<{ next?: string | string[] }>;
 };
 
 function safeNextPath(value?: string) {
@@ -17,8 +17,9 @@ function safeNextPath(value?: string) {
 }
 
 export default async function DosenLoginPage({ searchParams }: PageProps) {
-  const params = await Promise.resolve(searchParams || {});
-  const nextPath = safeNextPath(params.next);
+  const params = searchParams ? await searchParams : {};
+  const nextParam = Array.isArray(params.next) ? params.next[0] : params.next;
+  const nextPath = safeNextPath(nextParam);
   const dosen = await getCurrentDosen();
 
   if (dosen) {

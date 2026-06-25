@@ -12,6 +12,17 @@ const nextConfig: NextConfig = {
     "/api/export/invitations/[formId]": pdfKitAssets,
     "/api/export/**/*": pdfKitAssets,
   },
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.resolve = config.resolve || {};
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+      };
+    }
+
+    return config;
+  },
 };
 
 export default nextConfig;

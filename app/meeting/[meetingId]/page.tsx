@@ -7,9 +7,7 @@ export const revalidate = 0;
 type PageProps = {
   params: Promise<{
     meetingId: string;
-  }> | {
-    meetingId: string;
-  };
+  }>;
 };
 
 function toJsonSafe<T>(value: T): T {
