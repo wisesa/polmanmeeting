@@ -184,7 +184,7 @@ export default function AdminMeetingRunClient({ meeting, faceOptions }: AdminMee
               {faceOptions.length === 0 ? <span className="muted small">Daftarkan wajah terlebih dahulu di menu Register Face.</span> : null}
             </label>
             <label>
-              <span>Notulis</span>
+              <span>Notulen</span>
               <input name="notulis" defaultValue={value(activeMeeting.runForm?.notulis || activeMeeting.notulis)} />
             </label>
           </div>
