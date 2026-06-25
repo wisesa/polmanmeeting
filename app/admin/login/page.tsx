@@ -1,29 +1,21 @@
 import AdminLoginClient from "@/components/AdminLoginClient";
-import { getCurrentAdmin } from "@/lib/auth/admin-session";
-import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 type PageProps = {
-  searchParams?: Promise<{ next?: string }> | { next?: string };
+  searchParams?: Promise<{
+    next?: string | string[];
+  }>;
 };
 
-function safeNextPath(value?: string) {
-  if (!value) return "/admin";
-  if (!value.startsWith("/admin")) return "/admin";
-  if (value.startsWith("/admin/login")) return "/admin";
-  return value;
-}
-
 export default async function AdminLoginPage({ searchParams }: PageProps) {
-  const params = await Promise.resolve(searchParams || {});
-  const nextPath = safeNextPath(params.next);
-  const admin = await getCurrentAdmin();
+  const resolvedSearchParams = await searchParams;
 
-  if (admin) {
-    redirect(nextPath);
-  }
+  const nextParam = resolvedSearchParams?.next;
+  const nextPath = Array.isArray(nextParam)
+    ? nextParam[0] ?? "/admin"
+    : nextParam ?? "/admin";
 
   return <AdminLoginClient nextPath={nextPath} />;
 }
