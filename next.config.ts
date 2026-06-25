@@ -6,7 +6,7 @@ const pdfKitAssets = [
 ];
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["firebase-admin", "pdfkit"],
+  serverExternalPackages: ["pdfkit"],
   outputFileTracingIncludes: {
     "/api/export/meetings/[meetingId]": pdfKitAssets,
     "/api/export/invitations/[formId]": pdfKitAssets,
