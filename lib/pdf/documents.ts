@@ -10,6 +10,8 @@ const FONT_BOLD = "Times-Bold";
 const PAGE_MARGIN = 56;
 const FORM_REVISION = "0";
 const MINISTRY_NAME = "KEMENTERIAN PENDIDIKAN TINGGI, SAINS DAN TEKNOLOGI";
+const MINISTRY_NAME_LINE_1 = "KEMENTERIAN PENDIDIKAN TINGGI, SAINS DAN";
+const MINISTRY_NAME_LINE_2 = "TEKNOLOGI";
 const INSTITUTION_NAME = "POLITEKNIK MANUFAKTUR NEGERI BANGKA BELITUNG";
 const DEPARTMENT_NAME = "JURUSAN INFORMATIKA DAN BISNIS";
 const ADDRESS_TEXT = "Kawasan Industri Airkantung Sungailiat - Bangka 33211";
@@ -142,34 +144,46 @@ function addLetterHeader(doc: PDFKit.PDFDocument) {
   const right = pageWidth - PAGE_MARGIN;
   const centerX = left + 112;
   const centerWidth = right - centerX;
-  const lineY = 127;
+  const lineY = 143;
 
   addLogo(doc, left, 34, 102, 76);
 
-  doc.font(FONT_BOLD).fontSize(12.2).text(MINISTRY_NAME, centerX, 28, {
+  // Judul kementerian dibuat dua baris tetap agar tidak saling menimpa
+  // dan tidak turun menabrak nama institusi di bawahnya.
+  doc.font(FONT_BOLD).fontSize(11.4).text(MINISTRY_NAME_LINE_1, centerX, 24, {
     width: centerWidth,
     align: "center",
+    lineBreak: false,
   });
-  doc.font(FONT_BOLD).fontSize(11.4).text(INSTITUTION_NAME, centerX, 50, {
+  doc.font(FONT_BOLD).fontSize(11.4).text(MINISTRY_NAME_LINE_2, centerX, 39, {
     width: centerWidth,
     align: "center",
+    lineBreak: false,
   });
-  doc.font(FONT_BOLD).fontSize(10.8).text(DEPARTMENT_NAME, centerX, 70, {
+  doc.font(FONT_BOLD).fontSize(11.1).text(INSTITUTION_NAME, centerX, 60, {
     width: centerWidth,
     align: "center",
+    lineBreak: false,
   });
-  doc.font(FONT_REGULAR).fontSize(8.2).text(ADDRESS_TEXT, centerX, 91, {
+  doc.font(FONT_BOLD).fontSize(10.6).text(DEPARTMENT_NAME, centerX, 81, {
     width: centerWidth,
     align: "center",
+    lineBreak: false,
   });
-  doc.font(FONT_REGULAR).fontSize(8.2).text(CONTACT_TEXT, centerX, 104, {
+  doc.font(FONT_REGULAR).fontSize(8.2).text(ADDRESS_TEXT, centerX, 104, {
     width: centerWidth,
     align: "center",
+    lineBreak: false,
+  });
+  doc.font(FONT_REGULAR).fontSize(8.2).text(CONTACT_TEXT, centerX, 117, {
+    width: centerWidth,
+    align: "center",
+    lineBreak: false,
   });
 
   doc.lineWidth(1.2).moveTo(left, lineY).lineTo(right, lineY).stroke();
   doc.lineWidth(0.4).moveTo(left, lineY + 5).lineTo(right, lineY + 5).stroke();
-  doc.y = lineY + 24;
+  doc.y = lineY + 28;
 }
 
 function addFormHeader(doc: PDFKit.PDFDocument, noDokumen?: string | null) {
@@ -343,6 +357,15 @@ function getDateLabel(item: Pick<Meeting | MeetingInfoForm, "hari" | "tanggal" |
   return [day, date].filter(Boolean).join(" / ") || "-";
 }
 
+function getInvitationCreatedDateLabel(item: Pick<Meeting | MeetingInfoForm, "createdAt" | "updatedAt" | "meetingDate" | "tanggal">) {
+  // Tanggal pada kanan atas surat undangan memakai tanggal data undangan dibuat.
+  // Jika data lama belum memiliki createdAt, fallback dipakai agar PDF tetap bisa dibuat.
+  if (item.createdAt) return dateToLong(undefined, item.createdAt);
+  if (item.updatedAt) return dateToLong(undefined, item.updatedAt);
+  if (item.meetingDate) return dateToLong(undefined, item.meetingDate);
+  return dateToLong(item.tanggal);
+}
+
 function getTopic(item: Pick<Meeting | MeetingInfoForm, "topikRapat" | "meetingName">) {
   return nonEmpty(item.topikRapat) || nonEmpty(item.meetingName) || "Rapat";
 }
@@ -370,18 +393,18 @@ function addInvitationLetter(doc: PDFKit.PDFDocument, item: Meeting | MeetingInf
 
   const left = PAGE_MARGIN + 6;
   const contentWidth = doc.page.width - left - PAGE_MARGIN;
-  const letterDate = dateToLong(item.tanggal, item.meetingDate);
+  const letterDate = getInvitationCreatedDateLabel(item);
   const prodiText = nonEmpty(item.prodiText) || item.prodiNames?.join(", ") || DEPARTMENT_NAME;
   const topic = getTopic(item);
   const agenda = getAgenda(item);
   const leader = getLeader(item);
   const leaderFace = faces ? findFaceForName(leader, faces) : null;
 
-  const metaY = 152;
+  const metaY = 172;
   const metaRowGap = 22;
-  const recipientY = 230;
-  const bodyY = 322;
-  const kvY = 372;
+  const recipientY = 250;
+  const bodyY = 342;
+  const kvY = 392;
 
   doc.font(FONT_REGULAR).fontSize(10.5).text(letterDate, doc.page.width - 220, metaY, {
     width: 160,
@@ -420,16 +443,16 @@ function addInvitationLetter(doc: PDFKit.PDFDocument, item: Meeting | MeetingInf
     doc,
     "Demikian kami sampaikan, atas perhatian dan kerjasamanya kami ucapkan terima kasih.",
     left,
-    508,
+    528,
     contentWidth,
     11,
     "justify"
   );
 
   const signX = doc.page.width - 230;
-  doc.font(FONT_REGULAR).fontSize(11).text("Ka Prodi,", signX, 568, { width: 160, align: "center" });
-  addSignatureImage(doc, leaderFace?.signatureBase64, leaderFace?.signatureMimeType, signX + 25, 598, 110, 38);
-  doc.font(FONT_BOLD).fontSize(10.5).text(text(leader || "Ka Prodi"), signX, 646, { width: 160, align: "center" });
+  doc.font(FONT_REGULAR).fontSize(11).text("Ka Prodi,", signX, 588, { width: 160, align: "center" });
+  addSignatureImage(doc, leaderFace?.signatureBase64, leaderFace?.signatureMimeType, signX + 25, 618, 110, 38);
+  doc.font(FONT_BOLD).fontSize(10.5).text(text(leader || "Ka Prodi"), signX, 666, { width: 160, align: "center" });
 }
 
 function drawAttendanceTableHeader(doc: PDFKit.PDFDocument, x: number, y: number, widths: number[], headerHeight: number) {

@@ -1129,6 +1129,15 @@ export async function getRegisteredFaces(): Promise<RegisteredFace[]> {
   return faces.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
 }
 
+
+export async function getRegisteredFace(nameKey: string): Promise<RegisteredFace | null> {
+  const cleanNameKey = makeSafeDocId(cleanString(nameKey));
+  if (!cleanNameKey) return null;
+
+  const faces = await getRegisteredFaces();
+  return faces.find((face) => face.nameKey === cleanNameKey || face.nodeKey === cleanNameKey || face.faceId === cleanNameKey) || null;
+}
+
 export async function saveFaceApiRegisteredFace(params: {
   name: string;
   nameKey?: string;
@@ -1223,6 +1232,13 @@ export async function updateRegisteredFace(nameKey: string, params: {
   prodiId?: string;
   prodiName?: string;
   faceId?: string;
+  descriptor?: number[];
+  descriptors?: number[][];
+  matrix?: number[];
+  faceThumbnailBase64?: string;
+  faceThumbnailMimeType?: string;
+  updateDescriptor?: boolean;
+  updateFaceThumbnail?: boolean;
   signatureBase64?: string;
   signatureMimeType?: string;
   updateSignature?: boolean;
@@ -1236,6 +1252,7 @@ export async function updateRegisteredFace(nameKey: string, params: {
   if (!snap.exists) throw new Error("Data wajah tidak ditemukan.");
 
   const existing = mapFromSnapshot(snap.data());
+  const existingFaceApi = mapFromSnapshot(existing.faceApi);
   const name = cleanString(params.name, cleanString(existing.name, cleanNameKey));
   if (!name) throw new Error("Nama wajib diisi.");
 
@@ -1251,6 +1268,45 @@ export async function updateRegisteredFace(nameKey: string, params: {
     updatedAt: now,
     syncedAt: serverTimestamp(),
   };
+
+  if (params.updateDescriptor) {
+    const descriptor = arrayOfNumbers(params.descriptor);
+    const descriptors = arrayOfNumberArrays(params.descriptors);
+    const matrix = arrayOfNumbers(params.matrix);
+    const firstVector = descriptor.length > 0 ? descriptor : descriptors[0] || matrix;
+
+    if (firstVector.length !== 128) throw new Error("Descriptor face-api.js harus berisi 128 angka.");
+
+    updatePayload.descriptor = descriptor.length > 0 ? descriptor : firstVector;
+    updatePayload.descriptors = descriptors.length > 0 ? descriptors : undefined;
+    updatePayload.matrix = matrix.length > 0 ? matrix : firstVector;
+    updatePayload.matrixRows = 1;
+    updatePayload.matrixCols = firstVector.length;
+    updatePayload.descriptorSize = firstVector.length;
+    updatePayload.descriptorModel = "face-api.js";
+    updatePayload.faceApi = {
+      model: "face-api.js",
+      modelName: "FaceRecognitionNet",
+      descriptorSize: firstVector.length,
+      descriptor: descriptor.length > 0 ? descriptor : firstVector,
+      descriptors: descriptors.length > 0 ? descriptors : undefined,
+      matrix: matrix.length > 0 ? matrix : firstVector,
+      matrixRows: 1,
+      matrixCols: firstVector.length,
+      metric: "euclidean",
+      distanceThreshold: 0.6,
+      createdAt: numberFromFirestore(existingFaceApi.createdAt, numberFromFirestore(existing.createdAt, now)),
+      updatedAt: now,
+    };
+  }
+
+  if (params.updateFaceThumbnail) {
+    const faceThumbnailBase64 = cleanString(params.faceThumbnailBase64);
+    updatePayload.hasFaceThumbnail = Boolean(faceThumbnailBase64);
+    updatePayload.faceThumbnailBase64 = faceThumbnailBase64;
+    updatePayload.faceThumbnailMimeType = faceThumbnailBase64 ? cleanString(params.faceThumbnailMimeType, "image/jpeg") : "";
+    updatePayload.faceThumbnailUpdatedAt = faceThumbnailBase64 ? now : null;
+  }
 
   if (params.updateSignature) {
     const signatureBase64 = params.clearSignature ? "" : cleanString(params.signatureBase64);

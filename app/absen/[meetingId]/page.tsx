@@ -9,6 +9,5 @@ type PageProps = {
 
 export default async function AbsenPage({ params }: PageProps) {
   const { meetingId } = await params;
-
-  redirect(`/meeting/${encodeURIComponent(meetingId)}`);
+  redirect(`/dosen/meeting/${encodeURIComponent(meetingId)}`);
 }

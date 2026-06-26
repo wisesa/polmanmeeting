@@ -56,7 +56,7 @@ export default async function AdminDashboardPage() {
             <p className="eyebrow light">Panel Admin</p>
             <h1 className="heroTitle">Kelola Meeting</h1>
             <p className="heroSubtitle">
-              Admin mengelola wajah peserta, undangan, dan data meeting. User biasa cukup membuka daftar meeting lalu absen dari halaman detail.
+              Admin mengelola wajah peserta, undangan, dan data meeting. Akses pengguna biasa dinonaktifkan; dosen masuk melalui autentikasi wajah.
             </p>
           </div>
           <div className="heroMetric">

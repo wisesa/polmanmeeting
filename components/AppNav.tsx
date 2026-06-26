@@ -12,12 +12,17 @@ const adminMenuItems = [
   { href: "/admin/meeting", label: "Meeting", icon: "🗓️" },
 ];
 
+const dosenMenuItems = [
+  { href: "/dosen/ganti-profil", label: "Ganti Profil", icon: "🙂" },
+  { href: "/dosen/meeting", label: "Meeting", icon: "🗓️" },
+];
+
 export default function AppNav() {
   const pathname = usePathname();
   const isAdminArea = pathname?.startsWith("/admin");
   const isDosenArea = pathname?.startsWith("/dosen");
-  const brandHref = isAdminArea ? "/admin" : isDosenArea ? "/dosen/register-wajah" : "/";
-  const brandTitle = isAdminArea ? "Admin Meeting" : isDosenArea ? "Dosen Register" : "Polman Meeting";
+  const brandHref = isAdminArea ? "/admin" : isDosenArea ? "/dosen/meeting" : "/dosen/login";
+  const brandTitle = isAdminArea ? "Admin Meeting" : isDosenArea ? "Dosen Meeting" : "Polman Meeting";
 
   return (
     <nav className="appNav" aria-label="Menu utama">
@@ -29,10 +34,6 @@ export default function AppNav() {
       <div className="navLinks">
         {isAdminArea ? (
           <>
-            <Link href="/" className="navLink mutedNav" title="Mode User">
-              <span className="navIcon" aria-hidden="true">👤</span>
-              <span className="navText">Mode User</span>
-            </Link>
             {adminMenuItems.map((item) => (
               <Link
                 key={item.href}
@@ -48,24 +49,26 @@ export default function AppNav() {
           </>
         ) : isDosenArea ? (
           <>
-            <Link href="/" className="navLink mutedNav" title="Mode User">
-              <span className="navIcon" aria-hidden="true">👤</span>
-              <span className="navText">Mode User</span>
-            </Link>
-            <Link
-              href="/dosen/register-wajah"
-              className={pathname === "/dosen/register-wajah" ? "navLink activeNav" : "navLink"}
-              title="Register Wajah"
-            >
-              <span className="navIcon" aria-hidden="true">🙂</span>
-              <span className="navText">Register Wajah</span>
-            </Link>
+            {dosenMenuItems.map((item) => {
+              const active = pathname === item.href || (item.href === "/dosen/meeting" && pathname?.startsWith("/dosen/meeting/"));
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={active ? "navLink activeNav" : "navLink"}
+                  title={item.label}
+                >
+                  <span className="navIcon" aria-hidden="true">{item.icon}</span>
+                  <span className="navText">{item.label}</span>
+                </Link>
+              );
+            })}
             {pathname !== "/dosen/login" ? <DosenLogoutButton /> : null}
           </>
         ) : (
-          <Link href="/" className="navLink activeNav" title="Daftar Meeting">
-            <span className="navIcon" aria-hidden="true">📋</span>
-            <span className="navText">Daftar Meeting</span>
+          <Link href="/dosen/login" className="navLink activeNav" title="Login Dosen">
+            <span className="navIcon" aria-hidden="true">🙂</span>
+            <span className="navText">Login Dosen</span>
           </Link>
         )}
       </div>

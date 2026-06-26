@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireDosenRequest } from "@/lib/auth/dosen-session";
 import { getMeeting, getRegisteredFaces, upsertPresence } from "@/lib/firebase/db";
 import { matchFaceDescriptorDistance, sanitizeFaceRecord, type FaceCandidate, type FaceRecord } from "@/lib/face/matcher";
 
@@ -61,6 +62,7 @@ function formatCandidate(candidate: FaceCandidate) {
 
 export async function POST(request: NextRequest) {
   try {
+    await requireDosenRequest(request);
     const body = (await request.json()) as Record<string, unknown>;
     const meetingId = stringValue(body.meetingId || body.meeting_id || request.nextUrl.searchParams.get("meetingId"));
     const descriptor = numberArray(body.descriptor || body.faceDescriptor || body.faceApiDescriptor || body.matrix);
@@ -153,7 +155,7 @@ export async function POST(request: NextRequest) {
         matched: false,
         message: error instanceof Error ? error.message : "Descriptor gagal diverifikasi.",
       },
-      { status: 500 }
+      { status: error instanceof Error && error.message.includes("Sesi dosen") ? 401 : 500 }
     );
   }
 }

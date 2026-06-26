@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireMeetingReadRequest } from "@/lib/auth/read-session";
 import { requireAdminRequest } from "@/lib/auth/admin-session";
 import { createMeetingDirect, getMeetings } from "@/lib/firebase/db";
 import { getMeetingDateKey, isValidDateKey, todayDateKey } from "@/lib/utils/date";
@@ -16,35 +17,41 @@ function stringArray(value: unknown): string[] {
 }
 
 export async function GET(request: NextRequest) {
-  const dateParam = request.nextUrl.searchParams.get("date");
-  const selectedDate = dateParam ? (isValidDateKey(dateParam) ? dateParam : todayDateKey()) : null;
-  const allMeetings = await getMeetings("meetings");
-  const meetings = selectedDate ? allMeetings.filter((meeting) => getMeetingDateKey(meeting) === selectedDate) : allMeetings;
+  try {
+    await requireMeetingReadRequest(request);
+    const dateParam = request.nextUrl.searchParams.get("date");
+    const selectedDate = dateParam ? (isValidDateKey(dateParam) ? dateParam : todayDateKey()) : null;
+    const allMeetings = await getMeetings("meetings");
+    const meetings = selectedDate ? allMeetings.filter((meeting) => getMeetingDateKey(meeting) === selectedDate) : allMeetings;
 
-  return NextResponse.json({
-    ok: true,
-    selectedDate,
-    totalCount: allMeetings.length,
-    filteredCount: meetings.length,
-    meetings: meetings.map((meeting) => ({
-      meetingId: meeting.meetingId,
-      meetingName: meeting.meetingName,
-      noDokumen: meeting.noDokumen || "",
-      tanggal: meeting.tanggal || "",
-      hari: meeting.hari || "",
-      tempat: meeting.tempat || "",
-      waktu: meeting.waktu || "",
-      topikRapat: meeting.topikRapat || "",
-      agendaRapat: meeting.agendaRapat || "",
-      meetingDate: meeting.meetingDate || 0,
-      meetingDateKey: getMeetingDateKey(meeting) || meeting.meetingDateKey || "",
-      status: meeting.status || "active",
-      participantsCount: meeting.participantsCount || 0,
-      prodiIds: meeting.prodiIds || [],
-      prodiNames: meeting.prodiNames || [],
-      prodiText: meeting.prodiText || "",
-    })),
-  });
+    return NextResponse.json({
+      ok: true,
+      selectedDate,
+      totalCount: allMeetings.length,
+      filteredCount: meetings.length,
+      meetings: meetings.map((meeting) => ({
+        meetingId: meeting.meetingId,
+        meetingName: meeting.meetingName,
+        noDokumen: meeting.noDokumen || "",
+        tanggal: meeting.tanggal || "",
+        hari: meeting.hari || "",
+        tempat: meeting.tempat || "",
+        waktu: meeting.waktu || "",
+        topikRapat: meeting.topikRapat || "",
+        agendaRapat: meeting.agendaRapat || "",
+        meetingDate: meeting.meetingDate || 0,
+        meetingDateKey: getMeetingDateKey(meeting) || meeting.meetingDateKey || "",
+        status: meeting.status || "active",
+        participantsCount: meeting.participantsCount || 0,
+        prodiIds: meeting.prodiIds || [],
+        prodiNames: meeting.prodiNames || [],
+        prodiText: meeting.prodiText || "",
+      })),
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Gagal memuat meeting.";
+    return NextResponse.json({ ok: false, success: false, message }, { status: message.includes("Sesi") ? 401 : 500 });
+  }
 }
 
 export async function POST(request: NextRequest) {

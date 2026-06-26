@@ -11,6 +11,7 @@ type MeetingDetailClientProps = {
   meetingId: string;
   initialMeeting: AnyRecord | null;
   initialPresences: AnyRecord[];
+  backHref?: string;
 };
 
 type ApiResponse = {
@@ -187,6 +188,7 @@ export default function MeetingDetailClient({
   meetingId,
   initialMeeting,
   initialPresences,
+  backHref = "/dosen/meeting",
 }: MeetingDetailClientProps) {
   const [meeting, setMeeting] = useState<AnyRecord | null>(initialMeeting);
   const [presences, setPresences] = useState<AnyRecord[]>(
@@ -289,7 +291,7 @@ export default function MeetingDetailClient({
     <main className="meetingDetailPage">
       <div className="meetingDetailShell">
         <div className="meetingTopBar">
-  <Link href="/" className="iconButton" aria-label="Kembali" title="Kembali">
+  <Link href={backHref} className="iconButton" aria-label="Kembali" title="Kembali">
     <svg
       viewBox="0 0 24 24"
       fill="none"

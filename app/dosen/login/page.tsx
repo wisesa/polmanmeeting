@@ -10,9 +10,9 @@ type PageProps = {
 };
 
 function safeNextPath(value?: string) {
-  if (!value) return "/dosen/register-wajah";
-  if (!value.startsWith("/dosen")) return "/dosen/register-wajah";
-  if (value.startsWith("/dosen/login")) return "/dosen/register-wajah";
+  if (!value) return "/dosen/meeting";
+  if (!value.startsWith("/dosen")) return "/dosen/meeting";
+  if (value.startsWith("/dosen/login")) return "/dosen/meeting";
   return value;
 }
 

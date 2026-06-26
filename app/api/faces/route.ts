@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAdminRequest } from "@/lib/auth/admin-session";
 import { requireFaceRegisterRequest } from "@/lib/auth/face-register-session";
 import { getRegisteredFaces, saveFaceApiRegisteredFace } from "@/lib/firebase/db";
 
@@ -47,13 +48,16 @@ function faceSummary(face: Awaited<ReturnType<typeof getRegisteredFaces>>[number
 
 export async function GET(request: NextRequest) {
   try {
-    await requireFaceRegisterRequest(request);
+    const session = await requireFaceRegisterRequest(request);
     const faces = await getRegisteredFaces();
+    const visibleFaces = session.role === "dosen"
+      ? faces.filter((face) => face.nameKey === session.user.nameKey || face.nodeKey === session.user.nameKey || face.faceId === session.user.faceId)
+      : faces;
 
     return NextResponse.json({
       success: true,
-      count: faces.length,
-      faces: faces.map(faceSummary),
+      count: visibleFaces.length,
+      faces: visibleFaces.map(faceSummary),
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Gagal memuat data wajah.";
@@ -64,7 +68,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    await requireFaceRegisterRequest(request);
+    await requireAdminRequest(request);
     const body = (await request.json()) as Record<string, unknown>;
 
     const face = await saveFaceApiRegisteredFace({

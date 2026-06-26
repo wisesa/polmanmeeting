@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireMeetingReadRequest } from "@/lib/auth/read-session";
 import { getMeeting, getPresenceList } from "@/lib/firebase/db";
 
 export const runtime = "nodejs";
@@ -11,8 +12,9 @@ type RouteContext = {
   }>;
 };
 
-export async function GET(_request: NextRequest, context: RouteContext) {
+export async function GET(request: NextRequest, context: RouteContext) {
   try {
+    await requireMeetingReadRequest(request);
     const params = await context.params;
     const meetingId = decodeURIComponent(params.meetingId);
 
