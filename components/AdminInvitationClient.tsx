@@ -47,7 +47,6 @@ function formatDate(value?: number) {
   return new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
 }
 
-
 function isSchedulePast(dateKey: string, time: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) return false;
   const safeTime = /^\d{2}:\d{2}$/.test(time) ? time : "00:00";
@@ -121,11 +120,22 @@ function readSelectedProdi(formElement: HTMLFormElement, prodiOptions: ProdiOpti
   };
 }
 
-export default function AdminInvitationClient({ initialInvitations, todayDateKey, faceOptions, prodiOptions, listMonth, currentPage, pageSize, totalCount }: AdminInvitationClientProps) {
+export default function AdminInvitationClient({
+  initialInvitations,
+  todayDateKey,
+  faceOptions,
+  prodiOptions,
+  listMonth,
+  currentPage,
+  pageSize,
+  totalCount,
+}: AdminInvitationClientProps) {
   const [invitations, setInvitations] = useState(initialInvitations);
   const [totalItems, setTotalItems] = useState(totalCount);
   const [editingInvitation, setEditingInvitation] = useState<MeetingInfoForm | null>(null);
   const [state, setState] = useState<SaveState>({ status: "idle", message: "" });
+  const [startingId, setStartingId] = useState("");
+  const [deletingId, setDeletingId] = useState("");
   const toast = useToast();
 
   useEffect(() => {
@@ -139,8 +149,6 @@ export default function AdminInvitationClient({ initialInvitations, todayDateKey
       toast.error("Gagal", state.message);
     }
   }, [state.message, state.status, toast]);
-  const [startingId, setStartingId] = useState("");
-  const [deletingId, setDeletingId] = useState("");
 
   const isSaving = state.status === "saving";
   const isEditing = Boolean(editingInvitation);
@@ -178,7 +186,7 @@ export default function AdminInvitationClient({ initialInvitations, todayDateKey
         pemimpinRapat: getString(formData, "pemimpinRapat"),
         notulis: getString(formData, "notulis"),
         ...prodiSelection,
-        pesertaText: getString(formData, "pesertaText"),
+        pesertaText: editingInvitation?.pesertaText || "",
         catatan: getString(formData, "catatan"),
         status: getString(formData, "status") || "scheduled",
       };
@@ -379,20 +387,16 @@ export default function AdminInvitationClient({ initialInvitations, todayDateKey
           </label>
 
           <label>
-            <span>Peserta atau Unit yang Diundang</span>
-            <textarea name="pesertaText" rows={4} defaultValue={editingInvitation?.pesertaText || ""} placeholder="Contoh: Ketua Jurusan, Kaprodi, Dosen TI, Staf Akademik" />
-          </label>
-
-          <label>
             <span>Catatan</span>
             <textarea name="catatan" rows={3} defaultValue={editingInvitation?.catatan || ""} placeholder="Catatan tambahan" />
           </label>
 
           <div className="formActions">
-            <button type="submit" className="primaryButton" disabled={isSaving}>{isSaving ? "Menyimpan..." : isEditing ? "Update Undangan" : "Simpan Undangan"}</button>
+            <button type="submit" className="primaryButton" disabled={isSaving}>
+              {isSaving ? "Menyimpan..." : isEditing ? "Update Undangan" : "Simpan Undangan"}
+            </button>
           </div>
         </form>
-
       </section>
 
       <section className="contentSection">
@@ -430,10 +434,22 @@ export default function AdminInvitationClient({ initialInvitations, todayDateKey
                 <h3>{invitation.meetingName}</h3>
                 {invitation.topikRapat ? <p className="topic">{invitation.topikRapat}</p> : null}
                 <div className="meetingInfoGrid">
-                  <div className="infoTile"><span>Tanggal</span><strong>{invitation.hari ? `${invitation.hari}, ` : ""}{invitation.tanggal || "-"}</strong></div>
-                  <div className="infoTile"><span>Waktu</span><strong>{invitation.waktu || "-"}</strong></div>
-                  <div className="infoTile full"><span>Prodi</span><strong>{invitation.prodiText || invitation.prodiNames?.join(", ") || "-"}</strong></div>
-                  <div className="infoTile full"><span>Tempat</span><strong>{invitation.tempat || "-"}</strong></div>
+                  <div className="infoTile">
+                    <span>Tanggal</span>
+                    <strong>{invitation.hari ? `${invitation.hari}, ` : ""}{invitation.tanggal || "-"}</strong>
+                  </div>
+                  <div className="infoTile">
+                    <span>Waktu</span>
+                    <strong>{invitation.waktu || "-"}</strong>
+                  </div>
+                  <div className="infoTile full">
+                    <span>Prodi</span>
+                    <strong>{invitation.prodiText || invitation.prodiNames?.join(", ") || "-"}</strong>
+                  </div>
+                  <div className="infoTile full">
+                    <span>Tempat</span>
+                    <strong>{invitation.tempat || "-"}</strong>
+                  </div>
                 </div>
                 <div className="meetingCardActions wrapActions">
                   {invitation.meetingId ? (

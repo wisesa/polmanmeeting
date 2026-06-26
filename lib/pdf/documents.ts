@@ -7,9 +7,7 @@ import type { Meeting, MeetingInfoForm, Presence, RegisteredFace } from "@/lib/f
 
 const FONT_REGULAR = "Times-Roman";
 const FONT_BOLD = "Times-Bold";
-const FONT_ITALIC = "Times-Italic";
 const PAGE_MARGIN = 56;
-const FORM_CODE = "FRM-JIB.002";
 const FORM_REVISION = "0";
 const MINISTRY_NAME = "KEMENTERIAN PENDIDIKAN TINGGI, SAINS DAN TEKNOLOGI";
 const INSTITUTION_NAME = "POLITEKNIK MANUFAKTUR NEGERI BANGKA BELITUNG";
@@ -106,18 +104,6 @@ function dateToDay(value?: string | null, fallbackMillis?: number | null) {
   return new Intl.DateTimeFormat("id-ID", { weekday: "long", timeZone: "Asia/Jakarta" }).format(new Date(millis));
 }
 
-function formatDateTime(value?: number | null) {
-  if (!value) return "-";
-  return new Intl.DateTimeFormat("id-ID", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "Asia/Jakarta",
-  }).format(new Date(value));
-}
-
 function formatTimeRange(item: Pick<Meeting | MeetingInfoForm, "waktu" | "waktuMulai" | "waktuSelesai">) {
   const existing = nonEmpty(item.waktu);
   if (existing) return existing;
@@ -146,7 +132,7 @@ function addLogo(doc: PDFKit.PDFDocument, x: number, y: number, width: number, h
   try {
     doc.image(logoPath, x, y, { fit: [width, height], align: "center", valign: "center" });
   } catch {
-    // Logo is decorative. Keep PDF generation running if the image cannot be parsed.
+    // Logo bersifat dekoratif. PDF tetap dibuat walau logo gagal dibaca.
   }
 }
 
@@ -154,16 +140,17 @@ function addLetterHeader(doc: PDFKit.PDFDocument) {
   const pageWidth = doc.page.width;
   const left = PAGE_MARGIN;
   const right = pageWidth - PAGE_MARGIN;
-  const centerX = left + 82;
+  const centerX = left + 112;
   const centerWidth = right - centerX;
+  const lineY = 127;
 
-  addLogo(doc, left + 8, 42, 76, 54);
+  addLogo(doc, left, 34, 102, 76);
 
-  doc.font(FONT_BOLD).fontSize(12.2).text(MINISTRY_NAME, centerX, 34, {
+  doc.font(FONT_BOLD).fontSize(12.2).text(MINISTRY_NAME, centerX, 28, {
     width: centerWidth,
     align: "center",
   });
-  doc.font(FONT_BOLD).fontSize(11.4).text(INSTITUTION_NAME, centerX, 53, {
+  doc.font(FONT_BOLD).fontSize(11.4).text(INSTITUTION_NAME, centerX, 50, {
     width: centerWidth,
     align: "center",
   });
@@ -171,18 +158,18 @@ function addLetterHeader(doc: PDFKit.PDFDocument) {
     width: centerWidth,
     align: "center",
   });
-  doc.font(FONT_REGULAR).fontSize(8.2).text(ADDRESS_TEXT, centerX, 87, {
+  doc.font(FONT_REGULAR).fontSize(8.2).text(ADDRESS_TEXT, centerX, 91, {
     width: centerWidth,
     align: "center",
   });
-  doc.font(FONT_REGULAR).fontSize(8.2).text(CONTACT_TEXT, centerX, 100, {
+  doc.font(FONT_REGULAR).fontSize(8.2).text(CONTACT_TEXT, centerX, 104, {
     width: centerWidth,
     align: "center",
   });
 
-  doc.lineWidth(1.2).moveTo(left, 115).lineTo(right, 115).stroke();
-  doc.lineWidth(0.4).moveTo(left, 118).lineTo(right, 118).stroke();
-  doc.y = 132;
+  doc.lineWidth(1.2).moveTo(left, lineY).lineTo(right, lineY).stroke();
+  doc.lineWidth(0.4).moveTo(left, lineY + 5).lineTo(right, lineY + 5).stroke();
+  doc.y = lineY + 24;
 }
 
 function addFormHeader(doc: PDFKit.PDFDocument, noDokumen?: string | null) {
@@ -217,6 +204,7 @@ function addFormHeader(doc: PDFKit.PDFDocument, noDokumen?: string | null) {
     const cleanValue = text(value);
     let valueFontSize = 9;
     doc.font(FONT_REGULAR).fontSize(valueFontSize);
+
     while (valueFontSize > 6.5 && doc.widthOfString(cleanValue) > metaValueWidth) {
       valueFontSize -= 0.25;
       doc.font(FONT_REGULAR).fontSize(valueFontSize);
@@ -389,26 +377,31 @@ function addInvitationLetter(doc: PDFKit.PDFDocument, item: Meeting | MeetingInf
   const leader = getLeader(item);
   const leaderFace = faces ? findFaceForName(leader, faces) : null;
 
-  doc.font(FONT_REGULAR).fontSize(10.5).text(letterDate, doc.page.width - 220, 124, {
+  const metaY = 152;
+  const metaRowGap = 22;
+  const recipientY = 230;
+  const bodyY = 322;
+  const kvY = 372;
+
+  doc.font(FONT_REGULAR).fontSize(10.5).text(letterDate, doc.page.width - 220, metaY, {
     width: 160,
     align: "right",
   });
 
-  letterKeyValue(doc, "Nomor", text(item.noDokumen), left, 124);
-  letterKeyValue(doc, "Lampiran", "-", left, 140);
-  letterKeyValue(doc, "Perihal", "Undangan Rapat", left, 156);
+  letterKeyValue(doc, "Nomor", text(item.noDokumen), left, metaY);
+  letterKeyValue(doc, "Lampiran", "-", left, metaY + metaRowGap);
+  letterKeyValue(doc, "Perihal", "Undangan Rapat", left, metaY + metaRowGap * 2);
 
-  doc.font(FONT_REGULAR).fontSize(11).text("Yth. Bapak / Ibu Dosen", left, 204, { width: contentWidth });
-  doc.text(`Prodi ${prodiText}`, left, 220, { width: contentWidth });
-  doc.text("di-", left, 236, { width: contentWidth });
-  doc.text(INSTITUTION_NAME, left, 252, { width: contentWidth });
+  doc.font(FONT_REGULAR).fontSize(11).text("Yth. Bapak / Ibu Dosen", left, recipientY, { width: contentWidth });
+  doc.text(`Prodi ${prodiText}`, left, recipientY + 16, { width: contentWidth });
+  doc.text("di-", left, recipientY + 32, { width: contentWidth });
+  doc.text(INSTITUTION_NAME, left, recipientY + 48, { width: contentWidth });
 
   const bodyText = `Sehubungan dengan ${topic}, dengan ini kami mengundang Bapak/Ibu Dosen untuk menghadiri Rapat yang akan dilaksanakan pada :`;
-  wrapParagraph(doc, bodyText, left, 304, contentWidth, 11, "justify");
+  wrapParagraph(doc, bodyText, left, bodyY, contentWidth, 11, "justify");
 
   const kvX = left;
   const kvValueX = left + 116;
-  const kvY = 354;
   const rows: Array<[string, string]> = [
     ["Hari / Tanggal", getDateLabel(item)],
     ["Waktu", formatTimeRange(item)],
@@ -427,16 +420,16 @@ function addInvitationLetter(doc: PDFKit.PDFDocument, item: Meeting | MeetingInf
     doc,
     "Demikian kami sampaikan, atas perhatian dan kerjasamanya kami ucapkan terima kasih.",
     left,
-    492,
+    508,
     contentWidth,
     11,
     "justify"
   );
 
   const signX = doc.page.width - 230;
-  doc.font(FONT_REGULAR).fontSize(11).text("Ka Prodi,", signX, 552, { width: 160, align: "center" });
-  addSignatureImage(doc, leaderFace?.signatureBase64, leaderFace?.signatureMimeType, signX + 25, 582, 110, 38);
-  doc.font(FONT_BOLD).fontSize(10.5).text(text(leader || "Ka Prodi"), signX, 630, { width: 160, align: "center" });
+  doc.font(FONT_REGULAR).fontSize(11).text("Ka Prodi,", signX, 568, { width: 160, align: "center" });
+  addSignatureImage(doc, leaderFace?.signatureBase64, leaderFace?.signatureMimeType, signX + 25, 598, 110, 38);
+  doc.font(FONT_BOLD).fontSize(10.5).text(text(leader || "Ka Prodi"), signX, 646, { width: 160, align: "center" });
 }
 
 function drawAttendanceTableHeader(doc: PDFKit.PDFDocument, x: number, y: number, widths: number[], headerHeight: number) {
@@ -540,7 +533,6 @@ function addNotulenPage(doc: PDFKit.PDFDocument, meeting: Meeting, faces: Return
   const top = 160;
   const width = doc.page.width - 120;
   const rightCol = 145;
-  const bottomH = 160;
   const mainBottom = 754;
   const labelW = 84;
   const valueX = left + labelW;
