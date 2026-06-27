@@ -60,14 +60,33 @@ async function loadFaceApiModels(addDebug: (message: string) => void) {
   return faceapi;
 }
 
-async function detectDescriptorFromVideo(video: HTMLVideoElement, faceapi: FaceApiModule) {
+function captureStillImageFromVideo(video: HTMLVideoElement) {
   if (!video.videoWidth || !video.videoHeight) {
     throw new Error("Preview kamera belum siap. Tunggu sampai gambar kamera muncul.");
   }
 
+  const canvas = document.createElement("canvas");
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+
+  const context = canvas.getContext("2d");
+
+  if (!context) {
+    throw new Error("Foto wajah belum bisa diambil. Silakan muat ulang kamera.");
+  }
+
+  context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+  return {
+    canvas,
+    imageUrl: canvas.toDataURL("image/jpeg", 0.92),
+  };
+}
+
+async function readFaceDataFromStillImage(image: HTMLCanvasElement, faceapi: FaceApiModule) {
   const detection = await faceapi
     .detectSingleFace(
-      video,
+      image,
       new faceapi.TinyFaceDetectorOptions({
         inputSize: 320,
         scoreThreshold: 0.5,
@@ -77,7 +96,7 @@ async function detectDescriptorFromVideo(video: HTMLVideoElement, faceapi: FaceA
     .withFaceDescriptor();
 
   if (!detection) {
-    throw new Error("Wajah tidak terdeteksi. Posisikan wajah di tengah area panduan dan coba lagi.");
+    throw new Error("Wajah tidak terdeteksi pada foto yang diambil. Posisikan wajah di tengah area panduan dan coba lagi.");
   }
 
   const descriptor = Array.from(detection.descriptor).map((item) => Number(item));
@@ -101,6 +120,7 @@ export default function DosenLoginClient({ nextPath }: DosenLoginClientProps) {
   const redirectTarget = useMemo(() => safeNextPath(nextPath), [nextPath]);
   const [state, setState] = useState<LoginState>({ status: "idle", message: "" });
   const [result, setResult] = useState<LoginResponse | null>(null);
+  const [capturedImageUrl, setCapturedImageUrl] = useState("");
   const [, setDebugLines] = useState<string[]>(["Login wajah dosen siap."]);
 
   const isBusy = ["checking", "loading-model", "starting", "capturing"].includes(state.status);
@@ -142,6 +162,7 @@ export default function DosenLoginClient({ nextPath }: DosenLoginClientProps) {
     try {
       setState({ status: "checking", message: "Mengecek kamera..." });
       setResult(null);
+      setCapturedImageUrl("");
       stopCamera();
 
       if (!window.isSecureContext) {
@@ -191,12 +212,17 @@ export default function DosenLoginClient({ nextPath }: DosenLoginClientProps) {
         throw new Error("Video kamera tidak tersedia.");
       }
 
-      setState({ status: "capturing", message: "Mencocokkan wajah..." });
+      setState({ status: "capturing", message: "Mengambil foto wajah..." });
       setResult(null);
 
+      const snapshot = captureStillImageFromVideo(videoRef.current);
+      setCapturedImageUrl(snapshot.imageUrl);
+      addDebug("Foto wajah berhasil diambil.");
+
+      setState({ status: "capturing", message: "Mencocokkan wajah dari foto yang diambil..." });
       const faceapi = await loadFaceApiModels(addDebug);
-      const descriptor = await detectDescriptorFromVideo(videoRef.current, faceapi);
-      addDebug("Data wajah berhasil dibaca.");
+      const descriptor = await readFaceDataFromStillImage(snapshot.canvas, faceapi);
+      addDebug("Data wajah berhasil dibaca dari foto.");
 
       const response = await fetch("/api/auth/dosen/session", {
         method: "POST",
@@ -215,6 +241,7 @@ export default function DosenLoginClient({ nextPath }: DosenLoginClientProps) {
       window.location.href = redirectTarget;
     } catch (error) {
       const message = error instanceof Error ? error.message : "Login wajah gagal.";
+      setCapturedImageUrl("");
       setState({ status: "ready", message: "Kamera siap." });
       setResult({ success: false, matched: false, message });
       addDebug(`ERROR login: ${message}`);
@@ -238,6 +265,9 @@ export default function DosenLoginClient({ nextPath }: DosenLoginClientProps) {
 
         <div className="cameraPreview registerPreview">
           <video ref={videoRef} className="cameraVideo" playsInline muted autoPlay />
+          {capturedImageUrl && state.status === "capturing" ? (
+            <img className="cameraSnapshotImage" src={capturedImageUrl} alt="Foto wajah yang sedang dicocokkan" />
+          ) : null}
 
           <div className="faceGuideLayer" aria-hidden="true">
             <div className="faceGuideOval">
@@ -253,7 +283,7 @@ export default function DosenLoginClient({ nextPath }: DosenLoginClientProps) {
           {state.status === "checking" && <div className="cameraOverlay"><span>Mengecek kamera...</span></div>}
           {state.status === "loading-model" && <div className="cameraOverlay"><span>Menyiapkan pemeriksaan wajah...</span></div>}
           {state.status === "starting" && <div className="cameraOverlay"><span>Mengaktifkan kamera...</span></div>}
-          {state.status === "capturing" && <div className="cameraOverlay"><span>Mencocokkan wajah...</span></div>}
+          {state.status === "capturing" && <div className="cameraOverlay"><span>{state.message || "Mencocokkan wajah..."}</span></div>}
           {state.status === "error" && <div className="cameraOverlay error"><span>{state.message}</span></div>}
         </div>
 
