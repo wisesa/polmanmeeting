@@ -944,7 +944,7 @@ export default function RegisterFaceClient({ initialFaces, prodiOptions, mode = 
               <button type="submit" className="primaryButton" disabled={isBusy || (!descriptor && !isEditing)}>
                 {status === "saving" ? "Menyimpan..." : isDosenMode ? "Update Profil" : isEditing ? "Update Data Wajah" : "Simpan Data Wajah"}
               </button>
-              {isEditing ? <button type="button" className="ghostButton" onClick={cancelEdit}>Batal Edit</button> : null}
+              {isEditing && !isDosenMode ? <button type="button" className="ghostButton" onClick={cancelEdit}>Batal Edit</button> : null}
             </div>
           </form>
 

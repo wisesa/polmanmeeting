@@ -5737,3 +5737,24 @@ body {
     opacity: 0.32 !important;
   }
 }
+
+/* =========================
+   DOSEN PROFILE FINAL PATCH
+   - Tombol Batal Edit disembunyikan di mode dosen melalui komponen.
+   - Nama dosen panjang dibuat turun ke baris berikutnya, bukan terpotong.
+========================= */
+.faceCardTopline h3 {
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow: visible !important;
+  text-overflow: unset !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+  line-height: 1.25 !important;
+}
+
+.faceCardMain .muted {
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+}
