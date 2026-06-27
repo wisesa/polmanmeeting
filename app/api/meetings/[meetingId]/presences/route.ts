@@ -74,7 +74,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
             ? error.message
             : "Gagal mengambil data presensi.",
       },
-      { status: 500 }
+      { status: error instanceof Error && error.message.includes("Sesi") ? 401 : 500 }
     );
   }
 }

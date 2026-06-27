@@ -435,7 +435,7 @@ export default function MeetingDetailClient({
                         <div className="presenceMeta">
                           <span>{time}</span>
                           <span>{method}</span>
-                          {score && <span>Score {score}</span>}
+                          {score && <span>Kecocokan {score}</span>}
                         </div>
                       </div>
                     </article>

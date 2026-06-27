@@ -21,8 +21,7 @@ function rounded(value: number) {
 }
 
 function faceKey(face: Record<string, unknown>) {
-  const key = String(face.nameKey || face.faceId || face.id || face.key || "").trim();
-  return key;
+  return String(face.nameKey || face.faceId || face.id || face.key || "").trim();
 }
 
 export async function POST(request: NextRequest) {
@@ -32,7 +31,7 @@ export async function POST(request: NextRequest) {
 
     if (descriptor.length !== 128) {
       return NextResponse.json(
-        { success: false, matched: false, message: "Descriptor face-api.js harus berisi 128 angka." },
+        { success: false, matched: false, message: "Data wajah belum terbaca dengan benar. Silakan coba lagi." },
         { status: 400 }
       );
     }
@@ -46,7 +45,7 @@ export async function POST(request: NextRequest) {
         {
           success: false,
           matched: false,
-          message: "Belum ada data wajah dosen yang bisa dibandingkan di Firestore.",
+          message: "Belum ada data wajah dosen yang tersimpan.",
           comparedCount: match.comparedCount,
           threshold,
         },
@@ -90,6 +89,7 @@ export async function POST(request: NextRequest) {
       distance: rounded(match.distance),
       score: rounded(score),
       threshold,
+      rememberUntilLogout: true,
     });
 
     response.cookies.set({

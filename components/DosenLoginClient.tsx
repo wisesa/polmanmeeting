@@ -45,7 +45,7 @@ async function loadFaceApiModels(addDebug: (message: string) => void) {
   const faceapi = await faceApiPromise;
 
   if (!modelsLoaded) {
-    addDebug(`Memuat model face-api.js dari ${modelUrl}.`);
+    addDebug("Menyiapkan pemeriksaan wajah.");
 
     await Promise.all([
       faceapi.nets.tinyFaceDetector.loadFromUri(modelUrl),
@@ -54,7 +54,7 @@ async function loadFaceApiModels(addDebug: (message: string) => void) {
     ]);
 
     modelsLoaded = true;
-    addDebug("Model face-api.js siap.");
+    addDebug("Pemeriksaan wajah siap.");
   }
 
   return faceapi;
@@ -83,7 +83,7 @@ async function detectDescriptorFromVideo(video: HTMLVideoElement, faceapi: FaceA
   const descriptor = Array.from(detection.descriptor).map((item) => Number(item));
 
   if (descriptor.length !== 128) {
-    throw new Error("Descriptor face-api.js tidak valid. Ukuran harus 128 angka.");
+    throw new Error("Data wajah belum terbaca dengan benar. Silakan coba lagi.");
   }
 
   return descriptor;
@@ -115,11 +115,11 @@ export default function DosenLoginClient({ nextPath }: DosenLoginClientProps) {
     if (!result) return;
 
     if (result.success) {
-      toast.success("Login berhasil", result.message || "Autentikasi wajah berhasil.");
+      toast.success("Login berhasil", result.message || "Wajah berhasil dikenali.");
       return;
     }
 
-    toast.error("Login belum berhasil", result.message || "Wajah tidak cocok dengan data Firestore.");
+    toast.error("Login belum berhasil", result.message || "Wajah belum cocok dengan data yang tersimpan.");
   }, [result, toast]);
 
   function addDebug(message: string) {
@@ -145,14 +145,14 @@ export default function DosenLoginClient({ nextPath }: DosenLoginClientProps) {
       stopCamera();
 
       if (!window.isSecureContext) {
-        throw new Error("Kamera browser membutuhkan HTTPS atau localhost.");
+        throw new Error("Akses kamera membutuhkan halaman yang aman. Gunakan alamat HTTPS atau localhost.");
       }
 
       if (!navigator.mediaDevices?.getUserMedia) {
-        throw new Error("Browser tidak mendukung akses kamera.");
+        throw new Error("Perangkat ini belum mendukung akses kamera.");
       }
 
-      setState({ status: "loading-model", message: "Memuat model wajah..." });
+      setState({ status: "loading-model", message: "Menyiapkan pemeriksaan wajah..." });
       await loadFaceApiModels(addDebug);
 
       setState({ status: "starting", message: "Mengaktifkan kamera..." });
@@ -196,7 +196,7 @@ export default function DosenLoginClient({ nextPath }: DosenLoginClientProps) {
 
       const faceapi = await loadFaceApiModels(addDebug);
       const descriptor = await detectDescriptorFromVideo(videoRef.current, faceapi);
-      addDebug(`Descriptor dibuat. Panjang: ${descriptor.length}.`);
+      addDebug("Data wajah berhasil dibaca.");
 
       const response = await fetch("/api/auth/dosen/session", {
         method: "POST",
@@ -207,7 +207,7 @@ export default function DosenLoginClient({ nextPath }: DosenLoginClientProps) {
       const data = (await response.json()) as LoginResponse;
 
       if (!response.ok || data.success === false) {
-        throw new Error(data.message || "Autentikasi wajah dosen gagal.");
+        throw new Error(data.message || "Login wajah dosen gagal.");
       }
 
       setResult(data);
@@ -229,10 +229,10 @@ export default function DosenLoginClient({ nextPath }: DosenLoginClientProps) {
     <main className="appShell authShell">
       <section className="authCard faceLoginCard">
         <div className="authHeader">
-          <p className="eyebrow">Dosen Login</p>
-          <h1>Masuk dengan Autentikasi Wajah</h1>
+          <p className="eyebrow">Login Dosen</p>
+          <h1>Masuk dengan Wajah</h1>
           <p className="muted">
-            Sistem akan mencocokkan wajah dosen dengan descriptor yang tersimpan di Firestore.
+            Arahkan wajah ke kamera. Setelah wajah berhasil dikenali, akun akan tetap masuk sampai dosen menekan logout.
           </p>
         </div>
 
@@ -251,7 +251,7 @@ export default function DosenLoginClient({ nextPath }: DosenLoginClientProps) {
 
           {state.status === "idle" && <div className="cameraOverlay"><span>Tekan Buka Kamera</span></div>}
           {state.status === "checking" && <div className="cameraOverlay"><span>Mengecek kamera...</span></div>}
-          {state.status === "loading-model" && <div className="cameraOverlay"><span>Memuat model face-api.js...</span></div>}
+          {state.status === "loading-model" && <div className="cameraOverlay"><span>Menyiapkan pemeriksaan wajah...</span></div>}
           {state.status === "starting" && <div className="cameraOverlay"><span>Mengaktifkan kamera...</span></div>}
           {state.status === "capturing" && <div className="cameraOverlay"><span>Mencocokkan wajah...</span></div>}
           {state.status === "error" && <div className="cameraOverlay error"><span>{state.message}</span></div>}
@@ -270,11 +270,8 @@ export default function DosenLoginClient({ nextPath }: DosenLoginClientProps) {
           <div className={result.success ? "inlineAlert success" : "inlineAlert error"}>
             <strong>{result.success ? "Berhasil" : "Gagal"}</strong>
             <span>{result.message}</span>
-            {result.success ? <small>Score {formatNumber(result.score)} • Distance {formatNumber(result.distance)}</small> : null}
           </div>
         ) : null}
-
-        {/* Debug camera sengaja tidak ditampilkan pada halaman login dosen. */}
       </section>
     </main>
   );

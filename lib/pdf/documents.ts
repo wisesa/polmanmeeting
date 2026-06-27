@@ -148,8 +148,6 @@ function addLetterHeader(doc: PDFKit.PDFDocument) {
 
   addLogo(doc, left, 34, 102, 76);
 
-  // Judul kementerian dibuat dua baris tetap agar tidak saling menimpa
-  // dan tidak turun menabrak nama institusi di bawahnya.
   doc.font(FONT_BOLD).fontSize(11.4).text(MINISTRY_NAME_LINE_1, centerX, 24, {
     width: centerWidth,
     align: "center",
@@ -358,8 +356,6 @@ function getDateLabel(item: Pick<Meeting | MeetingInfoForm, "hari" | "tanggal" |
 }
 
 function getInvitationCreatedDateLabel(item: Pick<Meeting | MeetingInfoForm, "createdAt" | "updatedAt" | "meetingDate" | "tanggal">) {
-  // Tanggal pada kanan atas surat undangan memakai tanggal data undangan dibuat.
-  // Jika data lama belum memiliki createdAt, fallback dipakai agar PDF tetap bisa dibuat.
   if (item.createdAt) return dateToLong(undefined, item.createdAt);
   if (item.updatedAt) return dateToLong(undefined, item.updatedAt);
   if (item.meetingDate) return dateToLong(undefined, item.meetingDate);

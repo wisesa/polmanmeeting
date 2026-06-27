@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (descriptor.length !== 128) {
-      return NextResponse.json({ success: false, matched: false, message: "Descriptor face-api.js harus berisi 128 angka." }, { status: 400 });
+      return NextResponse.json({ success: false, matched: false, message: "Data wajah belum terbaca dengan benar. Silakan coba lagi." }, { status: 400 });
     }
 
     const meeting = await getMeeting(meetingId);
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: false,
         matched: false,
-        message: "Tidak ada descriptor face-api.js yang bisa dibandingkan.",
+        message: "Belum ada data wajah yang tersimpan untuk dibandingkan.",
         threshold,
         comparedCount: match.comparedCount,
         candidates: match.candidates.map(formatCandidate),
@@ -153,7 +153,7 @@ export async function POST(request: NextRequest) {
       {
         success: false,
         matched: false,
-        message: error instanceof Error ? error.message : "Descriptor gagal diverifikasi.",
+        message: error instanceof Error ? error.message : "Wajah gagal diperiksa.",
       },
       { status: error instanceof Error && error.message.includes("Sesi dosen") ? 401 : 500 }
     );

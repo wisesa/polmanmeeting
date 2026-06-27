@@ -20,15 +20,15 @@ export default async function AdminDashboardPage() {
     {
       href: "/admin/register-wajah",
       icon: "🙂",
-      title: "Register Face",
-      description: "Daftarkan wajah peserta dengan kamera browser dan descriptor face-api.js.",
+      title: "Data Wajah",
+      description: "Daftarkan wajah peserta dengan kamera atau file foto.",
       metric: `${faces.length} wajah`,
     },
     {
       href: "/admin/prodi",
       icon: "🏫",
       title: "Master Prodi",
-      description: "Kelola lookup program studi untuk register wajah, undangan, dan meeting.",
+      description: "Kelola pilihan program studi untuk data wajah, undangan, dan meeting.",
       metric: `${prodi.length} prodi`,
     },
     {
@@ -56,7 +56,7 @@ export default async function AdminDashboardPage() {
             <p className="eyebrow light">Panel Admin</p>
             <h1 className="heroTitle">Kelola Meeting</h1>
             <p className="heroSubtitle">
-              Admin mengelola wajah peserta, undangan, dan data meeting. Akses pengguna biasa dinonaktifkan; dosen masuk melalui autentikasi wajah.
+              Admin mengelola data wajah peserta, undangan, dan meeting. Dosen masuk menggunakan pengenalan wajah.
             </p>
           </div>
           <div className="heroMetric">

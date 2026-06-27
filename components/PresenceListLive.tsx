@@ -227,7 +227,7 @@ export default function PresenceListLive({
                 <div className="presenceMeta">
                   <span>{formatTime(getPresenceTime(presence))}</span>
                   <span>{presence.method || "web_face"}</span>
-                  <span>Score {formatScore(presence.lastScore || presence.score)}</span>
+                  <span>Kecocokan {formatScore(presence.lastScore || presence.score)}</span>
                 </div>
               </div>
             </article>

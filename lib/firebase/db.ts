@@ -1169,7 +1169,7 @@ export async function saveFaceApiRegisteredFace(params: {
 
   if (!name) throw new Error("Nama wajib diisi.");
   if (!nameKey) throw new Error("nameKey gagal dibuat.");
-  if (firstVector.length !== 128) throw new Error("Descriptor face-api.js harus berisi 128 angka.");
+  if (firstVector.length !== 128) throw new Error("Data wajah belum terbaca dengan benar. Silakan coba lagi.");
 
   const docRef = firestoreDb().collection("registered_faces").doc(nameKey);
   const existingSnap = await docRef.get();
@@ -1275,7 +1275,7 @@ export async function updateRegisteredFace(nameKey: string, params: {
     const matrix = arrayOfNumbers(params.matrix);
     const firstVector = descriptor.length > 0 ? descriptor : descriptors[0] || matrix;
 
-    if (firstVector.length !== 128) throw new Error("Descriptor face-api.js harus berisi 128 angka.");
+    if (firstVector.length !== 128) throw new Error("Data wajah belum terbaca dengan benar. Silakan coba lagi.");
 
     updatePayload.descriptor = descriptor.length > 0 ? descriptor : firstVector;
     updatePayload.descriptors = descriptors.length > 0 ? descriptors : undefined;

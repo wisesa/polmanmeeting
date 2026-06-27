@@ -2965,7 +2965,7 @@ body::before {
 }
 
 /* =========================
-   UI polish: lighter typography, compact nav, searchable lookup
+   UI polish: lighter typography, compact nav, searchable choices
 ========================= */
 :root {
   --text: #13201d;
@@ -5611,10 +5611,7 @@ body {
 }
 
 /* =========================
-   DOSEN HERO + LOGIN CLEANUP FINAL
-   - Debug camera login dosen tidak ditampilkan.
-   - Hero dosen memakai avatar seperti hero user.
-   - Overlay metric dibuat lebih kontras.
+   DOSEN HERO + PERSISTENT LOGIN FINAL
 ========================= */
 .faceLoginCard .cameraDebugToggle,
 .faceLoginCard .cameraDebugBox {

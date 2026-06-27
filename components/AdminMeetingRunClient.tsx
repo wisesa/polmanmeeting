@@ -181,7 +181,7 @@ export default function AdminMeetingRunClient({ meeting, faceOptions }: AdminMee
                 fallbackLabel={selectedLeader && !selectedLeaderExists ? selectedLeader : undefined}
                 emptyText="Nama tidak ditemukan. Daftarkan wajah terlebih dahulu."
               />
-              {faceOptions.length === 0 ? <span className="muted small">Daftarkan wajah terlebih dahulu di menu Register Face.</span> : null}
+              {faceOptions.length === 0 ? <span className="muted small">Daftarkan wajah terlebih dahulu di menu Data Wajah.</span> : null}
             </label>
             <label>
               <span>Notulen</span>

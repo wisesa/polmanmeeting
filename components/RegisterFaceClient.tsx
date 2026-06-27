@@ -95,7 +95,7 @@ async function loadFaceApiModels(addLog: (message: string) => void) {
   const faceapi = await faceApiPromise;
 
   if (!modelsLoaded) {
-    addLog(`Memuat model face-api.js dari ${modelUrl}.`);
+    addLog("Menyiapkan pemeriksaan wajah.");
 
     await Promise.all([
       faceapi.nets.tinyFaceDetector.loadFromUri(modelUrl),
@@ -104,7 +104,7 @@ async function loadFaceApiModels(addLog: (message: string) => void) {
     ]);
 
     modelsLoaded = true;
-    addLog("Model face-api.js siap.");
+    addLog("Pemeriksaan wajah siap.");
   }
 
   return faceapi;
@@ -134,7 +134,7 @@ async function detectDescriptorFromVideo(video: HTMLVideoElement, faceapi: FaceA
   const descriptor = Array.from(detection.descriptor).map((item) => Number(item));
 
   if (descriptor.length !== 128) {
-    throw new Error("Descriptor tidak valid. Ukuran wajib 128 angka.");
+    throw new Error("Data wajah belum terbaca dengan benar. Silakan coba lagi.");
   }
 
   return descriptor;
@@ -153,7 +153,7 @@ async function detectDescriptorFromImage(image: HTMLImageElement, faceapi: FaceA
   const descriptor = Array.from(detection.descriptor).map((item) => Number(item));
 
   if (descriptor.length !== 128) {
-    throw new Error("Descriptor tidak valid. Ukuran wajib 128 angka.");
+    throw new Error("Data wajah belum terbaca dengan benar. Silakan coba lagi.");
   }
 
   return descriptor;
@@ -448,7 +448,7 @@ export default function RegisterFaceClient({ initialFaces, prodiOptions, mode = 
       stopCamera();
 
       if (!window.isSecureContext) {
-        throw new Error("Kamera browser perlu HTTPS atau localhost.");
+        throw new Error("Akses kamera membutuhkan halaman yang aman. Gunakan alamat HTTPS atau localhost.");
       }
 
       if (!navigator.mediaDevices?.getUserMedia) {
@@ -507,13 +507,13 @@ export default function RegisterFaceClient({ initialFaces, prodiOptions, mode = 
       setResult({
         success: true,
         message: editingFace
-          ? "Descriptor wajah baru berhasil dibuat dari kamera. Klik update untuk menyimpan perubahan."
-          : "Descriptor wajah berhasil dibuat dari kamera. Isi identitas lalu simpan.",
+          ? "Data wajah baru berhasil diambil dari kamera. Klik update untuk menyimpan perubahan."
+          : "Data wajah berhasil diambil dari kamera. Isi identitas lalu simpan.",
         descriptorSize: nextDescriptor.length,
       });
-      addLog(`Descriptor kamera berhasil dibuat. Panjang: ${nextDescriptor.length}.`);
+      addLog("Data wajah dari kamera berhasil disiapkan.");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Descriptor gagal dibuat.";
+      const message = error instanceof Error ? error.message : "Data wajah gagal disiapkan.";
       setStatus("ready");
       setResult({ success: false, message });
       addLog(`ERROR: ${message}`);
@@ -553,16 +553,16 @@ export default function RegisterFaceClient({ initialFaces, prodiOptions, mode = 
         setResult({
           success: true,
           message: editingFace
-            ? "Descriptor wajah baru berhasil dibuat dari file gambar. Klik update untuk menyimpan perubahan."
-            : "Descriptor wajah berhasil dibuat dari file gambar. Isi identitas lalu simpan.",
+            ? "Data wajah baru berhasil diambil dari file gambar. Klik update untuk menyimpan perubahan."
+            : "Data wajah berhasil diambil dari file gambar. Isi identitas lalu simpan.",
           descriptorSize: nextDescriptor.length,
         });
-        addLog(`Descriptor file ${file.name} berhasil dibuat. Panjang: ${nextDescriptor.length}.`);
+        addLog(`Data wajah dari file ${file.name} berhasil disiapkan.`);
       } finally {
         URL.revokeObjectURL(objectUrl);
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Descriptor dari file gambar gagal dibuat.";
+      const message = error instanceof Error ? error.message : "Data wajah dari file gambar gagal disiapkan.";
       setStatus(cameraReady ? "ready" : "error");
       setResult({ success: false, message });
       addLog(`ERROR: ${message}`);
@@ -622,7 +622,7 @@ export default function RegisterFaceClient({ initialFaces, prodiOptions, mode = 
   }
 
   async function deleteFace(nameKey: string) {
-    if (!window.confirm("Hapus data wajah ini? Descriptor wajah dan TTD akan ikut terhapus.")) return;
+    if (!window.confirm("Hapus data wajah ini? Foto wajah dan TTD yang tersimpan juga akan terhapus.")) return;
 
     try {
       setDeletingKey(nameKey);
@@ -713,7 +713,7 @@ export default function RegisterFaceClient({ initialFaces, prodiOptions, mode = 
         return;
       }
 
-      if (!descriptor) throw new Error("Ambil descriptor wajah dari kamera atau file gambar terlebih dahulu.");
+      if (!descriptor) throw new Error("Ambil data wajah dari kamera atau file gambar terlebih dahulu.");
 
       const response = await fetch("/api/faces", {
         method: "POST",
@@ -792,8 +792,8 @@ export default function RegisterFaceClient({ initialFaces, prodiOptions, mode = 
   const editingProdiValue = editingFace?.prodiId || "";
   const editingProdiFallback = editingFace && editingProdiValue && !prodiOptions.some((item) => item.prodiId === editingProdiValue);
   const currentThumbnailSrc = thumbnailDataUrl || (editingFace ? faceThumbnailSrc(editingFace) : "");
-  const currentThumbnailTitle = thumbnailDataUrl ? "Descriptor wajah baru siap" : "Preview wajah tersimpan";
-  const currentThumbnailMeta = thumbnailDataUrl ? `${descriptor?.length || 0} angka` : `${editingFace?.descriptorSize || 0} angka tersimpan`;
+  const currentThumbnailTitle = thumbnailDataUrl ? "Data wajah baru siap" : "Preview wajah tersimpan";
+  const currentThumbnailMeta = thumbnailDataUrl ? "Siap disimpan" : (editingFace?.descriptorSize ? "Sudah tersimpan" : "Belum lengkap");
 
   return (
     <main className="appShell">
@@ -801,12 +801,12 @@ export default function RegisterFaceClient({ initialFaces, prodiOptions, mode = 
         <div className="heroGlow" />
         <div className="heroContent">
           <div>
-            <p className="eyebrow light">{isDosenMode ? "Dosen Register" : "Register Wajah"}</p>
+            <p className="eyebrow light">{isDosenMode ? "Profil Dosen" : "Data Wajah"}</p>
             <h1 className="heroTitle">{isDosenMode ? "Ganti Profil Dosen" : "Data Wajah Peserta"}</h1>
             <p className="heroSubtitle">
               {isDosenMode
-                ? "Perbarui profil dosen, foto wajah, descriptor wajah, prodi, jabatan, dan tanda tangan yang sudah tersimpan."
-                : "Daftarkan, edit, dan hapus data wajah peserta. Descriptor bisa dibuat dari webcam atau file gambar."}
+                ? "Perbarui profil dosen, foto wajah, prodi, jabatan, dan tanda tangan yang sudah tersimpan. Akun akan tetap masuk selama belum logout."
+                : "Daftarkan, edit, dan hapus data wajah peserta menggunakan kamera atau file gambar."}
             </p>
           </div>
           <div className="heroMetric">
@@ -820,7 +820,7 @@ export default function RegisterFaceClient({ initialFaces, prodiOptions, mode = 
         <div className="registerPanel">
           <div className="cameraHeader">
             <p className="eyebrow">Sumber Wajah</p>
-            <h2>{isEditing ? "Ganti Descriptor Wajah" : "Ambil Descriptor Wajah"}</h2>
+            <h2>{isEditing ? "Ganti Foto Wajah" : "Ambil Foto Wajah"}</h2>
             <p className="muted">Gunakan kamera atau unggah file gambar wajah yang jelas.</p>
           </div>
 
@@ -838,9 +838,9 @@ export default function RegisterFaceClient({ initialFaces, prodiOptions, mode = 
             </div>
 
             {status === "idle" && <div className="cameraOverlay"><span>Buka kamera atau unggah gambar</span></div>}
-            {status === "loading-model" && <div className="cameraOverlay"><span>Memuat model face-api.js...</span></div>}
+            {status === "loading-model" && <div className="cameraOverlay"><span>Menyiapkan pemeriksaan wajah...</span></div>}
             {status === "starting" && <div className="cameraOverlay"><span>Mengaktifkan kamera...</span></div>}
-            {status === "detecting" && <div className="cameraOverlay"><span>Membuat descriptor...</span></div>}
+            {status === "detecting" && <div className="cameraOverlay"><span>Membaca wajah...</span></div>}
           </div>
 
           <div className="cameraActions">
@@ -848,7 +848,7 @@ export default function RegisterFaceClient({ initialFaces, prodiOptions, mode = 
               {status === "idle" || status === "error" ? "Buka Kamera" : "Muat Ulang Kamera"}
             </button>
             <button type="button" className="ghostButton" onClick={takeDescriptor} disabled={!cameraReady || isBusy}>
-              Ambil dari Webcam
+              Ambil dari Kamera
             </button>
           </div>
 
@@ -867,28 +867,13 @@ export default function RegisterFaceClient({ initialFaces, prodiOptions, mode = 
               </div>
             </div>
           ) : null}
-
-          <button
-            type="button"
-            className="ghostButton cameraDebugToggle"
-            onClick={() => setShowDebug((current) => !current)}
-          >
-            {showDebug ? "Sembunyikan Debug Camera" : "Tampilkan Debug Camera"}
-          </button>
-
-          {showDebug ? (
-            <div className="cameraDebugBox">
-              <strong>Debug Camera Register</strong>
-              {logs.map((line, index) => <span key={`${line}-${index}`}>{line}</span>)}
-            </div>
-          ) : null}
         </div>
 
         <div className="registerPanel">
           <div className="cameraHeader">
             <p className="eyebrow">{isDosenMode ? "Ganti Profil" : "Identitas Peserta"}</p>
-            <h2>{isDosenMode ? "Profil Dosen" : isEditing ? "Edit Data Wajah" : "Simpan ke Firestore"}</h2>
-            <p className="muted">{isDosenMode ? "Preview wajah dan TTD tetap ditampilkan walaupun tidak diganti." : "ID wajah dibuat otomatis dari nama. Prodi diambil dari Master Prodi."}</p>
+            <h2>{isDosenMode ? "Profil Dosen" : isEditing ? "Edit Data Wajah" : "Simpan Data Wajah"}</h2>
+            <p className="muted">{isDosenMode ? "Preview wajah dan TTD tetap ditampilkan walaupun tidak diganti." : "Kode wajah dibuat otomatis dari nama. Prodi diambil dari Master Prodi."}</p>
           </div>
 
           <form key={editingFace?.nameKey || "new-face"} className="registerForm" onSubmit={handleSubmit}>
@@ -979,7 +964,7 @@ export default function RegisterFaceClient({ initialFaces, prodiOptions, mode = 
           <div className="emptyState modernEmpty">
             <div className="emptyIcon">🙂</div>
             <h2>Belum ada data wajah</h2>
-            <p className="muted">Ambil descriptor dari webcam atau gambar, lalu simpan identitas peserta.</p>
+            <p className="muted">Ambil data wajah dari kamera atau gambar, lalu simpan identitas peserta.</p>
           </div>
         ) : (
           <div className="faceListGrid">
@@ -1003,7 +988,7 @@ export default function RegisterFaceClient({ initialFaces, prodiOptions, mode = 
                     </div>
                     <p className="muted">{[face.jabatan, faceProdiDisplay(face)].filter(Boolean).join(" • ")}</p>
                     <div className="faceMetaGrid">
-                      <span>Descriptor {face.descriptorSize || 0}</span>
+                      <span>{face.descriptorSize ? "Data wajah siap" : "Data wajah belum lengkap"}</span>
                       <span>Update {formatDateTime(face.updatedAt)}</span>
                     </div>
                     {signatureSrc(face) ? (

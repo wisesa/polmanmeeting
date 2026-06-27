@@ -1,133 +1,26 @@
-# Polman Meeting Web
+# Polman Meeting
 
-Aplikasi Next.js untuk daftar meeting user, presensi wajah dengan face-api.js, panel admin, Firestore, Firebase Authentication, export PDF, dan master prodi.
+Aplikasi ini digunakan untuk mengelola undangan rapat, data wajah peserta, presensi dosen, hasil rapat, dan dokumen rapat.
 
-## Menu user
+## Alur Penggunaan
 
-User biasa membuka halaman berikut.
+1. Admin masuk melalui halaman admin.
+2. Admin mengisi program studi, data wajah, undangan, dan jadwal meeting.
+3. Dosen masuk menggunakan wajah.
+4. Setelah berhasil masuk, dosen tidak perlu login ulang selama belum menekan tombol logout.
+5. Dosen dapat membuka menu Ganti Profil untuk memperbarui nama, jabatan, prodi, foto wajah, dan tanda tangan.
+6. Dosen dapat membuka menu Meeting untuk melihat jadwal dan melakukan presensi.
 
-```text
-/
-/meeting/[meetingId]
-/absen/[meetingId]
-```
+## Catatan Penting
 
-User hanya melihat daftar meeting dan melakukan absensi dari detail meeting.
+- Pastikan kamera perangkat diizinkan saat login atau presensi.
+- Pastikan data wajah dosen sudah pernah didaftarkan oleh admin.
+- Preview wajah dan tanda tangan tetap ditampilkan walaupun dosen tidak menggantinya.
+- File rahasia aplikasi tidak disertakan dalam paket ini. Gunakan `.env.example` sebagai contoh pengisian konfigurasi.
 
-## Menu admin
-
-Admin harus login melalui Firebase Authentication.
-
-```text
-/admin/login
-/admin
-/admin/register-wajah
-/admin/prodi
-/admin/undangan
-/admin/meeting
-/admin/meeting/[meetingId]
-```
-
-Admin dapat mengelola:
-
-```text
-Register Face
-Master Prodi
-Undangan
-Meeting
-Export PDF
-```
-
-## Master Prodi
-
-Master prodi disimpan di Firestore collection berikut.
-
-```text
-master_prodi/{prodiId}
-```
-
-Contoh dokumen:
-
-```json
-{
-  "prodiId": "ti",
-  "kode": "TI",
-  "nama": "Teknik Informatika",
-  "displayName": "TI - Teknik Informatika",
-  "jenjang": "D4",
-  "jurusan": "Teknik Komputer dan Informatika",
-  "isActive": true,
-  "sortOrder": 1,
-  "createdAt": 1782061200000,
-  "updatedAt": 1782061200000,
-  "syncedAt": 1782061200000,
-  "source": "nextjs_admin_master_prodi"
-}
-```
-
-Master prodi dipakai sebagai lookup di:
-
-```text
-/admin/register-wajah  -> pilih satu prodi
-/admin/undangan        -> pilih lebih dari satu prodi
-/admin/meeting         -> pilih lebih dari satu prodi
-```
-
-## Register wajah
-
-Register wajah dapat mengambil descriptor dari dua sumber:
-
-```text
-Webcam
-File gambar JPG, PNG, atau WebP
-```
-
-Descriptor tetap memakai face-api.js ukuran 128 angka.
-
-## Struktur Firestore
-
-```text
-master_prodi/{prodiId}
-registered_faces/{nameKey}
-meeting_info_forms/{formId}
-meetings/{meetingId}
-meetings/{meetingId}/presences/{nameKey}
-calendar_marks/{dateKey}
-```
-
-## Setup
+## Menjalankan Aplikasi
 
 ```bash
 npm install
-npm run setup:firebase -- ./polman-635e0-firebase-adminsdk-fbsvc-79d2864d27.json
-```
-
-Isi Firebase Web App Config di `.env.local`.
-
-```env
-NEXT_PUBLIC_FIREBASE_API_KEY=AIza...
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=polman-635e0.firebaseapp.com
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=polman-635e0
-NEXT_PUBLIC_FIREBASE_APP_ID=1:xxxxxxxx:web:xxxxxxxx
-```
-
-Jalankan aplikasi.
-
-```bash
-npm run verify:firestore
 npm run dev
-```
-
-## Model face-api.js
-
-Default memakai CDN.
-
-```env
-NEXT_PUBLIC_FACE_API_MODEL_URL=https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js/weights
-```
-
-Bila ingin lokal, simpan model ke folder ini lalu ubah env ke `/models/face-api`.
-
-```text
-public/models/face-api
 ```

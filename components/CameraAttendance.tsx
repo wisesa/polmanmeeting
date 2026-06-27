@@ -74,7 +74,7 @@ async function loadFaceApiModels(addDebug: (message: string) => void) {
   const faceapi = await faceApiPromise;
 
   if (!faceApiLoaded) {
-    addDebug(`Memuat model face-api.js dari ${modelUrl}.`);
+    addDebug("Menyiapkan pemeriksaan wajah.");
 
     await Promise.all([
       faceapi.nets.tinyFaceDetector.loadFromUri(modelUrl),
@@ -83,7 +83,7 @@ async function loadFaceApiModels(addDebug: (message: string) => void) {
     ]);
 
     faceApiLoaded = true;
-    addDebug("Model face-api.js siap.");
+    addDebug("Pemeriksaan wajah siap.");
   }
 
   return faceapi;
@@ -117,7 +117,7 @@ async function detectDescriptorFromVideo(
   const descriptor = Array.from(result.descriptor).map((item) => Number(item));
 
   if (descriptor.length !== 128) {
-    throw new Error("Descriptor face-api.js tidak valid. Ukuran harus 128 angka.");
+    throw new Error("Data wajah belum terbaca dengan benar. Silakan coba lagi.");
   }
 
   return descriptor;
@@ -226,13 +226,13 @@ export default function CameraAttendance({
 
       if (!window.isSecureContext) {
         throw new Error(
-          "Halaman belum HTTPS. Buka URL https dari ngrok, bukan http."
+          "Akses kamera membutuhkan halaman yang aman. Gunakan alamat HTTPS atau localhost."
         );
       }
 
       if (!navigator.mediaDevices?.getUserMedia) {
         throw new Error(
-          "Browser tidak menyediakan getUserMedia. Cek izin kamera Chrome."
+          "Perangkat tidak dapat membuka kamera. Cek izin kamera lalu coba lagi."
         );
       }
 
@@ -309,7 +309,7 @@ export default function CameraAttendance({
         throw new Error("Video kamera tidak tersedia.");
       }
 
-      addDebug("Mulai proses ambil absen dengan face-api.js.");
+      addDebug("Mulai proses ambil absen dengan wajah.");
 
       setStatus("capturing");
       setErrorMessage("");
@@ -318,7 +318,7 @@ export default function CameraAttendance({
       const faceapi = await loadFaceApiModels(addDebug);
       const descriptor = await detectDescriptorFromVideo(videoRef.current, faceapi);
 
-      addDebug(`Descriptor dibuat. Panjang: ${descriptor.length}.`);
+      addDebug("Data wajah berhasil dibaca.");
 
       const response = await fetch("/api/attendance/verify-descriptor", {
         method: "POST",
@@ -430,7 +430,7 @@ export default function CameraAttendance({
 
           {status === "loading-model" && (
             <div className="cameraOverlay">
-              <span>Memuat model face-api.js...</span>
+              <span>Menyiapkan pemeriksaan wajah...</span>
             </div>
           )}
 
@@ -480,26 +480,7 @@ export default function CameraAttendance({
               Muat Ulang Kamera
             </button>
           )}
-
-          <button
-            type="button"
-            className="ghostButton cameraDebugToggle"
-            onClick={() => setShowDebug((current) => !current)}
-          >
-            {showDebug ? "Sembunyikan Debug Camera" : "Tampilkan Debug Camera"}
-          </button>
         </div>
-
-
-        {showDebug && (
-          <div className="cameraDebugBox">
-            <strong>Camera Debug</strong>
-
-            {debugLines.map((line, index) => (
-              <span key={`${line}-${index}`}>{line}</span>
-            ))}
-          </div>
-        )}
       </div>
     </div>
   );

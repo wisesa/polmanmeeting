@@ -6,7 +6,7 @@ import AdminLogoutButton from "@/components/AdminLogoutButton";
 import DosenLogoutButton from "@/components/DosenLogoutButton";
 
 const adminMenuItems = [
-  { href: "/admin/register-wajah", label: "Register Face", icon: "🙂" },
+  { href: "/admin/register-wajah", label: "Data Wajah", icon: "🙂" },
   { href: "/admin/prodi", label: "Master Prodi", icon: "🏫" },
   { href: "/admin/undangan", label: "Undangan", icon: "✉️" },
   { href: "/admin/meeting", label: "Meeting", icon: "🗓️" },

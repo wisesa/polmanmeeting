@@ -7,7 +7,9 @@ import type { NextRequest } from "next/server";
 import type { RegisteredFace } from "@/lib/firebase/schema";
 
 export const DOSEN_SESSION_COOKIE = "polman_dosen_session";
-export const DOSEN_SESSION_MAX_AGE_SECONDS = 60 * 60 * 8;
+// Cookie dibuat persistent supaya dosen tidak perlu login ulang selama belum logout.
+// Nilai ini dibuat panjang; browser tertentu dapat tetap menerapkan batas internal sendiri.
+export const DOSEN_SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 365 * 10;
 export const DOSEN_SESSION_MAX_AGE_MS = DOSEN_SESSION_MAX_AGE_SECONDS * 1000;
 
 export type DosenFaceSession = {

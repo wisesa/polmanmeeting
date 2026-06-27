@@ -45,7 +45,6 @@ function faceSummary(face: Awaited<ReturnType<typeof updateRegisteredFace>>) {
     prodi: face.prodi,
     prodiId: face.prodiId || "",
     prodiName: face.prodiName || face.prodi || "",
-    descriptorModel: face.descriptorModel || "face-api.js",
     descriptorSize: face.descriptorSize || 0,
     matrixRows: face.matrixRows || 0,
     matrixCols: face.matrixCols || 0,

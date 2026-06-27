@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireMeetingReadRequest } from "@/lib/auth/read-session";
 import { requireAdminRequest } from "@/lib/auth/admin-session";
+import { requireMeetingReadRequest } from "@/lib/auth/read-session";
 import { deleteMeeting, getMeeting, getPresenceList, updateMeetingDirect } from "@/lib/firebase/db";
 
 export const runtime = "nodejs";
@@ -69,7 +69,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     console.error("[api/meetings/[meetingId]]", error);
     return NextResponse.json(
       { success: false, message: error instanceof Error ? error.message : "Gagal memuat detail meeting." },
-      { status: 500 }
+      { status: error instanceof Error && error.message.includes("Sesi") ? 401 : 500 }
     );
   }
 }

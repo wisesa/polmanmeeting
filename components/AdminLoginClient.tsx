@@ -47,7 +47,7 @@ export default function AdminLoginClient({ nextPath }: AdminLoginClientProps) {
       }
 
       if (!isFirebaseClientConfigured) {
-        throw new Error("Konfigurasi Firebase Web App belum lengkap. Isi NEXT_PUBLIC_FIREBASE_API_KEY dan NEXT_PUBLIC_FIREBASE_APP_ID di .env.local.");
+        throw new Error("Konfigurasi login admin belum lengkap. Hubungi pengelola sistem.");
       }
 
       const firebaseClientAuth = getFirebaseClientAuth();
@@ -82,7 +82,7 @@ export default function AdminLoginClient({ nextPath }: AdminLoginClientProps) {
         <div className="authHeader">
           <p className="eyebrow">Admin Login</p>
           <h1>Masuk Panel Admin</h1>
-          <p className="muted">Gunakan akun yang sudah dibuat di Firebase Authentication.</p>
+          <p className="muted">Gunakan akun admin yang sudah terdaftar.</p>
         </div>
 
         <form className="modernForm" onSubmit={handleSubmit}>
@@ -93,7 +93,7 @@ export default function AdminLoginClient({ nextPath }: AdminLoginClientProps) {
 
           <label>
             <span>Password</span>
-            <input name="password" type="password" placeholder="Password Firebase Auth" autoComplete="current-password" required />
+            <input name="password" type="password" placeholder="Password" autoComplete="current-password" required />
           </label>
 
           <button type="submit" className="primaryButton" disabled={isLoading}>
@@ -103,7 +103,7 @@ export default function AdminLoginClient({ nextPath }: AdminLoginClientProps) {
 
 
         <div className="authFooter">
-          <a href="/" className="ghostButton small">Kembali ke mode user</a>
+          <a href="/" className="ghostButton small">Kembali ke login dosen</a>
         </div>
       </section>
     </main>

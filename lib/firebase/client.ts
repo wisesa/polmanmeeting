@@ -27,7 +27,7 @@ let cachedAuth: Auth | null = null;
 
 export function getFirebaseClientApp() {
   if (!isFirebaseClientConfigured) {
-    throw new Error("Konfigurasi Firebase Web App belum lengkap. Isi NEXT_PUBLIC_FIREBASE_API_KEY, NEXT_PUBLIC_FIREBASE_PROJECT_ID, dan NEXT_PUBLIC_FIREBASE_APP_ID di .env.local.");
+    throw new Error("Konfigurasi aplikasi belum lengkap. Hubungi pengelola sistem.");
   }
 
   if (cachedApp) return cachedApp;

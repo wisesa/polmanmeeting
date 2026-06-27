@@ -120,7 +120,7 @@ export default function AdminProdiClient({ initialProdi }: AdminProdiClientProps
         <div className="heroContent">
           <div>
             <p className="eyebrow light">Master Prodi</p>
-            <h1 className="heroTitle">Lookup Program Studi</h1>
+            <h1 className="heroTitle">Pilihan Program Studi</h1>
             <p className="heroSubtitle">
               Data ini muncul sebagai pilihan di register wajah, undangan, dan meeting.
             </p>
@@ -194,7 +194,7 @@ export default function AdminProdiClient({ initialProdi }: AdminProdiClientProps
           <div className="emptyState modernEmpty">
             <div className="emptyIcon">🏫</div>
             <h2>Belum ada master prodi</h2>
-            <p className="muted">Tambahkan prodi agar bisa dipakai sebagai lookup di form lain.</p>
+            <p className="muted">Tambahkan prodi agar bisa dipakai sebagai pilihan di form lain.</p>
           </div>
         ) : (
           <div className="meetingGrid">

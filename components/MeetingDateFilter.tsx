@@ -38,7 +38,7 @@ export default function MeetingDateFilter({
           <p className="eyebrow">Filter Tanggal Meeting</p>
           <h2>{selectedLabel}</h2>
           <p className="muted">
-            Menampilkan {filteredCount} meeting dari total {totalCount} meeting di Firebase.
+            Menampilkan {filteredCount} meeting dari total {totalCount} meeting.
           </p>
         </div>
       </div>

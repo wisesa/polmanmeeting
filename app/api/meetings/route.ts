@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireMeetingReadRequest } from "@/lib/auth/read-session";
 import { requireAdminRequest } from "@/lib/auth/admin-session";
+import { requireMeetingReadRequest } from "@/lib/auth/read-session";
 import { createMeetingDirect, getMeetings } from "@/lib/firebase/db";
 import { getMeetingDateKey, isValidDateKey, todayDateKey } from "@/lib/utils/date";
 
