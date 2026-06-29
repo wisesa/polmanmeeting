@@ -3,11 +3,15 @@ import "server-only";
 import fs from "fs/promises";
 import path from "path";
 import sharp from "sharp";
+import { del, put } from "@vercel/blob";
 
-const UPLOAD_URL_PREFIX = "/uploads/meetings";
+const LOCAL_UPLOAD_URL_PREFIX = "/uploads/meetings";
+const BLOB_UPLOAD_PREFIX = "meetings";
 const TARGET_BYTES = 200 * 1024;
 const MAX_INPUT_BYTES = 10 * 1024 * 1024;
 const ALLOWED_MIME_TYPES = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp"]);
+
+type MeetingImageStorageMode = "blob" | "local";
 
 export type SavedMeetingImage = {
   meetingImageUrl: string;
@@ -20,6 +24,26 @@ export type SavedMeetingImage = {
 
 function uploadDir() {
   return path.join(process.cwd(), "public", "uploads", "meetings");
+}
+
+function meetingImageStorageMode(): MeetingImageStorageMode {
+  const configured = (process.env.MEETING_IMAGE_STORAGE || "").trim().toLowerCase();
+
+  // Vercel runtime file system is read-only except /tmp, so persistent uploads
+  // must use object storage in production deployments.
+  if (process.env.VERCEL) return "blob";
+
+  if (configured === "local") return "local";
+  if (configured === "blob") return "blob";
+  return "local";
+}
+
+function ensureBlobToken() {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    throw new Error(
+      "Storage gambar meeting belum siap. Buat Vercel Blob Store lalu pastikan BLOB_READ_WRITE_TOKEN tersedia di Environment Variables Vercel.",
+    );
+  }
 }
 
 function safeFileSegment(value: string) {
@@ -60,21 +84,14 @@ export function validateMeetingImageFile(file: File | null) {
   }
 }
 
-export async function saveCompressedMeetingImage(file: File, meetingId: string): Promise<SavedMeetingImage | null> {
-  if (!file || file.size <= 0) return null;
-  validateMeetingImageFile(file);
-
-  const inputBuffer = Buffer.from(await file.arrayBuffer());
-  const outputBuffer = await compressToTarget(inputBuffer);
-  const now = Date.now();
-  const fileName = `${safeFileSegment(meetingId)}-${now}.jpg`;
+async function saveLocalMeetingImage(outputBuffer: Buffer, fileName: string, now: number): Promise<SavedMeetingImage> {
   const directory = uploadDir();
   const absolutePath = path.join(directory, fileName);
 
   await fs.mkdir(directory, { recursive: true });
   await fs.writeFile(absolutePath, outputBuffer);
 
-  const publicPath = `${UPLOAD_URL_PREFIX}/${fileName}`;
+  const publicPath = `${LOCAL_UPLOAD_URL_PREFIX}/${fileName}`;
 
   return {
     meetingImageUrl: publicPath,
@@ -86,11 +103,50 @@ export async function saveCompressedMeetingImage(file: File, meetingId: string):
   };
 }
 
-export async function deletePublicMeetingImage(publicPath?: string | null) {
+async function saveBlobMeetingImage(outputBuffer: Buffer, fileName: string, now: number): Promise<SavedMeetingImage> {
+  ensureBlobToken();
+
+  const pathname = `${BLOB_UPLOAD_PREFIX}/${fileName}`;
+  const blob = await put(pathname, outputBuffer, {
+    access: "public",
+    addRandomSuffix: false,
+    contentType: "image/jpeg",
+  });
+
+  return {
+    meetingImageUrl: blob.url,
+    meetingImagePath: blob.url,
+    meetingImageFileName: fileName,
+    meetingImageMimeType: "image/jpeg",
+    meetingImageSize: outputBuffer.length,
+    meetingImageUpdatedAt: now,
+  };
+}
+
+export async function saveCompressedMeetingImage(file: File, meetingId: string): Promise<SavedMeetingImage | null> {
+  if (!file || file.size <= 0) return null;
+  validateMeetingImageFile(file);
+
+  const inputBuffer = Buffer.from(await file.arrayBuffer());
+  const outputBuffer = await compressToTarget(inputBuffer);
+  const now = Date.now();
+  const fileName = `${safeFileSegment(meetingId)}-${now}.jpg`;
+
+  if (meetingImageStorageMode() === "blob") {
+    return saveBlobMeetingImage(outputBuffer, fileName, now);
+  }
+
+  return saveLocalMeetingImage(outputBuffer, fileName, now);
+}
+
+async function deleteLocalMeetingImage(publicPath?: string | null) {
   if (!publicPath) return;
 
+  // File lokal tidak dapat dihapus saat runtime Vercel karena deployment bersifat read-only.
+  if (process.env.VERCEL) return;
+
   const cleanPath = publicPath.trim();
-  if (!cleanPath.startsWith(`${UPLOAD_URL_PREFIX}/`)) return;
+  if (!cleanPath.startsWith(`${LOCAL_UPLOAD_URL_PREFIX}/`)) return;
 
   const fileName = path.basename(cleanPath);
   if (!fileName || fileName.includes("..")) return;
@@ -103,4 +159,36 @@ export async function deletePublicMeetingImage(publicPath?: string | null) {
       throw error;
     }
   }
+}
+
+async function deleteBlobMeetingImage(blobUrl?: string | null) {
+  if (!blobUrl) return;
+
+  const cleanUrl = blobUrl.trim();
+  if (!cleanUrl || cleanUrl.startsWith(`${LOCAL_UPLOAD_URL_PREFIX}/`)) return;
+
+  try {
+    const parsed = new URL(cleanUrl);
+    if (!parsed.pathname.includes(`/${BLOB_UPLOAD_PREFIX}/`)) return;
+    ensureBlobToken();
+    await del(cleanUrl);
+  } catch (error) {
+    // Abaikan URL lama/lokal yang bukan URL valid. Error token/blob tetap dilempar.
+    if (error instanceof TypeError) return;
+    throw error;
+  }
+}
+
+export async function deletePublicMeetingImage(publicPath?: string | null) {
+  if (!publicPath) return;
+
+  const cleanPath = publicPath.trim();
+  if (!cleanPath) return;
+
+  if (cleanPath.startsWith(`${LOCAL_UPLOAD_URL_PREFIX}/`)) {
+    await deleteLocalMeetingImage(cleanPath);
+    return;
+  }
+
+  await deleteBlobMeetingImage(cleanPath);
 }

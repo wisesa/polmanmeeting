@@ -277,6 +277,95 @@ function addSignatureImage(doc: PDFKit.PDFDocument, data?: string, mime?: string
   }
 }
 
+function getMeetingImageRef(meeting: Meeting) {
+  return nonEmpty(meeting.meetingImageUrl) || nonEmpty(meeting.meetingImagePath);
+}
+
+async function loadMeetingImageBuffer(meeting: Meeting) {
+  const imageRef = getMeetingImageRef(meeting);
+  if (!imageRef) return null;
+
+  try {
+    if (/^https?:\/\//i.test(imageRef)) {
+      const response = await fetch(imageRef, { cache: "no-store" });
+      if (!response.ok) return null;
+
+      const contentType = response.headers.get("content-type") || "";
+      if (contentType && !contentType.toLowerCase().startsWith("image/")) return null;
+
+      const arrayBuffer = await response.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      return buffer.length > 0 ? buffer : null;
+    }
+
+    const normalizedRef = imageRef.replace(/^\/+/, "");
+    const candidates = [
+      path.join(process.cwd(), "public", normalizedRef),
+      path.join(process.cwd(), ".next", "standalone", "public", normalizedRef),
+      path.isAbsolute(imageRef) ? imageRef : "",
+    ].filter(Boolean);
+
+    const existingPath = candidates.find((candidate) => fs.existsSync(candidate));
+    if (!existingPath) return null;
+
+    const buffer = fs.readFileSync(existingPath);
+    return buffer.length > 0 ? buffer : null;
+  } catch {
+    return null;
+  }
+}
+
+function addMeetingImagePage(doc: PDFKit.PDFDocument, meeting: Meeting, imageBuffer: Buffer | null) {
+  addFormHeader(doc, meeting.noDokumen);
+  addCenteredTitle(doc, "DOKUMENTASI RAPAT", 126);
+
+  const left = 70;
+  const right = doc.page.width - 70;
+  const width = right - left;
+  const detailY = 166;
+
+  labelValueLine(doc, "Topik Rapat", getTopic(meeting), left, detailY, 82, width - 95);
+  labelValueLine(doc, "Hari/Tanggal", getDateLabel(meeting), left, detailY + 24, 82, 210);
+  labelValueLine(doc, "Tempat", text(meeting.tempat), left + 315, detailY + 24, 52, 150);
+
+  const imageBoxX = left;
+  const imageBoxY = 232;
+  const imageBoxW = width;
+  const imageBoxH = 500;
+
+  doc.rect(imageBoxX, imageBoxY, imageBoxW, imageBoxH).stroke();
+
+  if (!getMeetingImageRef(meeting)) {
+    doc.font(FONT_REGULAR).fontSize(11).text("Belum ada gambar meeting yang diupload.", imageBoxX + 18, imageBoxY + 230, {
+      width: imageBoxW - 36,
+      align: "center",
+    });
+    return;
+  }
+
+  if (!imageBuffer) {
+    doc.font(FONT_REGULAR).fontSize(11).text("Gambar meeting tidak dapat dimuat saat PDF dibuat.", imageBoxX + 18, imageBoxY + 230, {
+      width: imageBoxW - 36,
+      align: "center",
+    });
+    return;
+  }
+
+  try {
+    doc.image(imageBuffer, imageBoxX + 12, imageBoxY + 12, {
+      fit: [imageBoxW - 24, imageBoxH - 24],
+      align: "center",
+      valign: "center",
+    });
+  } catch {
+    doc.font(FONT_REGULAR).fontSize(11).text("Format gambar meeting tidak dapat dimasukkan ke PDF.", imageBoxX + 18, imageBoxY + 230, {
+      width: imageBoxW - 36,
+      align: "center",
+    });
+  }
+}
+
+
 function makeFaceLookup(faces: RegisteredFace[]) {
   const byNameKey = new Map<string, RegisteredFace>();
   const byNormalizedName = new Map<string, RegisteredFace>();
@@ -646,6 +735,7 @@ export async function buildMeetingPdf(meeting: Meeting, presences: Presence[], r
   const doc = createDocument(`Meeting - ${meeting.meetingName}`, PAGE_MARGIN);
   const faces = makeFaceLookup(registeredFaces);
   const attendancePages = Math.max(1, Math.ceil(Math.max(presences.length, 1) / 25));
+  const meetingImageBuffer = await loadMeetingImageBuffer(meeting);
 
   for (let pageIndex = 0; pageIndex < attendancePages; pageIndex++) {
     if (pageIndex > 0) doc.addPage();
@@ -654,6 +744,11 @@ export async function buildMeetingPdf(meeting: Meeting, presences: Presence[], r
 
   doc.addPage();
   addNotulenPage(doc, meeting, faces);
+
+  if (getMeetingImageRef(meeting)) {
+    doc.addPage();
+    addMeetingImagePage(doc, meeting, meetingImageBuffer);
+  }
 
   return collectPdfBuffer(doc);
 }
