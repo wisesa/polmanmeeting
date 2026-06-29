@@ -369,7 +369,7 @@ export default function AdminInvitationClient({
 
           <label>
             <span>Notulen</span>
-            <input name="notulis" defaultValue={editingInvitation?.notulis || ""} placeholder="Nama notulen" />
+            <input name="notulis" defaultValue={editingInvitation?.notulis || ""} placeholder="Notulen" />
           </label>
 
           <label>

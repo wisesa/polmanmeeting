@@ -495,7 +495,7 @@ export default function MeetingDetailClient({
                 </label>
                 <label>
                   <span>Notulen</span>
-                  <input name="notulis" defaultValue={defaultNotulis} placeholder="Nama notulen" />
+                  <input name="notulis" defaultValue={defaultNotulis} placeholder="Notulen" />
                 </label>
               </div>
 
@@ -532,7 +532,7 @@ export default function MeetingDetailClient({
 
               <div className="formActions">
                 <button type="submit" className="primaryButton" disabled={isSavingForm}>
-                  {isSavingForm ? "Menyimpan..." : "Simpan Notulen"}
+                  {isSavingForm ? "Menyimpan..." : "Simpan"}
                 </button>
                 {saveState.message ? <span className="muted small">{saveState.message}</span> : null}
               </div>

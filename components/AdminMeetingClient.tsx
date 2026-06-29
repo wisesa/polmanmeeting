@@ -407,7 +407,7 @@ export default function AdminMeetingClient({
 
           <label>
             <span>Notulen</span>
-            <input name="notulis" defaultValue={sourceNotulis} placeholder="Nama notulen" />
+            <input name="notulis" defaultValue={sourceNotulis} placeholder="Notulen" />
           </label>
 
           <label>
