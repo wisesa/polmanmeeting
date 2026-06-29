@@ -6,6 +6,7 @@ import { SearchableSelect, type LookupOption } from "@/components/SearchLookup";
 import type { Meeting } from "@/lib/firebase/schema";
 import { useToast } from "@/components/ToastProvider";
 import PresenceListLive from "@/components/PresenceListLive";
+import CameraAttendance from "@/components/CameraAttendance";
 
 type FacePersonOption = {
   name: string;
@@ -230,6 +231,14 @@ export default function AdminMeetingRunClient({ meeting, faceOptions }: AdminMee
         </form>
 
         <div className="adminMeetingPresenceBlock">
+          {isClosed ? (
+            <div className="inlineAlert warning">
+              Meeting sudah ditutup. Absensi wajah tidak tersedia.
+            </div>
+          ) : (
+            <CameraAttendance meetingId={activeMeeting.meetingId} variant="embedded" />
+          )}
+
           <PresenceListLive meetingId={activeMeeting.meetingId} allowDelete />
         </div>
 

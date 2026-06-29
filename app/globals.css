@@ -2295,6 +2295,30 @@ body::before {
   min-width: 150px;
 }
 
+.attendanceSnapshotPreview {
+  display: grid;
+  gap: 8px;
+  width: min(220px, 100%);
+  margin: 14px auto 0;
+  padding: 10px;
+  border: 1px solid rgba(37, 99, 235, 0.14);
+  border-radius: 18px;
+  background: rgba(239, 246, 255, 0.82);
+  color: #1e3a8a;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.attendanceSnapshotPreview img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: 14px;
+  transform: scaleX(-1);
+}
+
 .resultCard {
   margin: 18px 0 0 !important;
   padding: 16px;

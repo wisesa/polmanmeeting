@@ -89,32 +89,46 @@ async function loadFaceApiModels(addDebug: (message: string) => void) {
   return faceapi;
 }
 
-async function detectDescriptorFromVideo(
-  video: HTMLVideoElement,
-  faceapi: FaceApiModule
-) {
-  const videoWidth = video.videoWidth;
-  const videoHeight = video.videoHeight;
-
-  if (!videoWidth || !videoHeight) {
-    throw new Error("Kamera belum siap. Tunggu preview muncul dulu.");
+function captureStillImageFromVideo(video: HTMLVideoElement) {
+  if (!video.videoWidth || !video.videoHeight) {
+    throw new Error("Preview kamera belum siap. Tunggu sampai gambar kamera muncul.");
   }
 
-  const options = new faceapi.TinyFaceDetectorOptions({
-    inputSize: 320,
-    scoreThreshold: 0.5,
-  });
+  const canvas = document.createElement("canvas");
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
 
-  const result = await faceapi
-    .detectSingleFace(video, options)
+  const context = canvas.getContext("2d");
+
+  if (!context) {
+    throw new Error("Foto wajah belum bisa diambil. Silakan muat ulang kamera.");
+  }
+
+  context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+  return {
+    canvas,
+    imageUrl: canvas.toDataURL("image/jpeg", 0.92),
+  };
+}
+
+async function readFaceDataFromStillImage(image: HTMLCanvasElement, faceapi: FaceApiModule) {
+  const detection = await faceapi
+    .detectSingleFace(
+      image,
+      new faceapi.TinyFaceDetectorOptions({
+        inputSize: 320,
+        scoreThreshold: 0.5,
+      })
+    )
     .withFaceLandmarks()
     .withFaceDescriptor();
 
-  if (!result) {
-    throw new Error("Wajah tidak terdeteksi. Posisikan wajah di area panduan dan coba lagi.");
+  if (!detection) {
+    throw new Error("Wajah tidak terdeteksi pada foto yang diambil. Posisikan wajah di tengah area panduan dan coba lagi.");
   }
 
-  const descriptor = Array.from(result.descriptor).map((item) => Number(item));
+  const descriptor = Array.from(detection.descriptor).map((item) => Number(item));
 
   if (descriptor.length !== 128) {
     throw new Error("Data wajah belum terbaca dengan benar. Silakan coba lagi.");
@@ -134,6 +148,7 @@ export default function CameraAttendance({
   const [status, setStatus] = useState<CameraStatus>("idle");
   const [errorMessage, setErrorMessage] = useState("");
   const [result, setResult] = useState<VerifyResponse | null>(null);
+  const [capturedImageUrl, setCapturedImageUrl] = useState("");
   const [showDebug, setShowDebug] = useState(false);
   const toast = useToast();
 
@@ -219,6 +234,7 @@ export default function CameraAttendance({
       setStatus("checking");
       setErrorMessage("");
       setResult(null);
+      setCapturedImageUrl("");
 
       stopCamera();
 
@@ -314,11 +330,16 @@ export default function CameraAttendance({
       setStatus("capturing");
       setErrorMessage("");
       setResult(null);
+      setCapturedImageUrl("");
+
+      const snapshot = captureStillImageFromVideo(videoRef.current);
+      setCapturedImageUrl(snapshot.imageUrl);
+      addDebug("Foto wajah berhasil diambil untuk proses absensi.");
 
       const faceapi = await loadFaceApiModels(addDebug);
-      const descriptor = await detectDescriptorFromVideo(videoRef.current, faceapi);
+      const descriptor = await readFaceDataFromStillImage(snapshot.canvas, faceapi);
 
-      addDebug("Data wajah berhasil dibaca.");
+      addDebug("Data wajah berhasil dibaca dari foto yang diambil.");
 
       const response = await fetch("/api/attendance/verify-descriptor", {
         method: "POST",
@@ -446,6 +467,13 @@ export default function CameraAttendance({
             </div>
           )}
         </div>
+
+        {capturedImageUrl ? (
+          <div className="attendanceSnapshotPreview">
+            <span>Foto yang dipakai untuk absensi</span>
+            <img src={capturedImageUrl} alt="Foto wajah yang dipakai untuk absensi" />
+          </div>
+        ) : null}
 
         <div className="cameraActions">
           {(status === "idle" || status === "error") && (
