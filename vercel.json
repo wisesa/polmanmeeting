@@ -1,5 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "installCommand": "npm ci --no-audit --no-fund",
-  "buildCommand": "npm run build"
+  "installCommand": "corepack enable && pnpm install --no-frozen-lockfile",
+  "buildCommand": "corepack enable && pnpm run build"
 }
