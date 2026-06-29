@@ -1,5 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "installCommand": "corepack enable && corepack prepare pnpm@9.15.9 --activate && pnpm config set registry https://registry.npmjs.org/ && pnpm install --no-frozen-lockfile --network-concurrency=1 --fetch-retries=5",
-  "buildCommand": "corepack enable && corepack prepare pnpm@9.15.9 --activate && pnpm run build"
+  "installCommand": "npm install --no-audit --no-fund",
+  "buildCommand": "npm run build"
 }
