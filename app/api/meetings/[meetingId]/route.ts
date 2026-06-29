@@ -27,6 +27,25 @@ function boolValue(value: unknown) {
   return ["1", "true", "yes", "on", "hapus"].includes(value.trim().toLowerCase());
 }
 
+function hasOwn(body: Record<string, unknown>, key: string) {
+  return Object.prototype.hasOwnProperty.call(body, key);
+}
+
+function optionalString(body: Record<string, unknown>, key: string) {
+  return hasOwn(body, key) ? stringValue(body[key]) : undefined;
+}
+
+function optionalStringArray(body: Record<string, unknown>, key: string) {
+  return hasOwn(body, key) ? stringArray(body[key]) : undefined;
+}
+
+function firstOptionalString(body: Record<string, unknown>, keys: string[]) {
+  for (const key of keys) {
+    if (hasOwn(body, key)) return stringValue(body[key]);
+  }
+  return undefined;
+}
+
 function formFile(formData: FormData, key: string) {
   const value = formData.get(key);
   return value instanceof File && value.size > 0 ? value : null;
@@ -38,9 +57,15 @@ async function readMeetingPayload(request: NextRequest) {
   if (contentType.includes("multipart/form-data")) {
     const formData = await request.formData();
     const body: Record<string, unknown> = Object.fromEntries(formData.entries());
-    body.prodiIds = formData.getAll("prodiIds").map((item) => stringValue(item)).filter(Boolean);
-    body.prodiNames = formData.getAll("prodiNames").map((item) => stringValue(item)).filter(Boolean);
-    body.deleteMeetingImage = formData.get("deleteMeetingImage");
+    if (formData.has("prodiIds")) {
+      body.prodiIds = formData.getAll("prodiIds").map((item) => stringValue(item)).filter(Boolean);
+    }
+    if (formData.has("prodiNames")) {
+      body.prodiNames = formData.getAll("prodiNames").map((item) => stringValue(item)).filter(Boolean);
+    }
+    if (formData.has("deleteMeetingImage")) {
+      body.deleteMeetingImage = formData.get("deleteMeetingImage");
+    }
     const imageFile = formFile(formData, "meetingImage");
     validateMeetingImageFile(imageFile);
     return { body, imageFile };
@@ -113,21 +138,21 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const oldMeeting = imageFile || deleteImage ? await getMeeting(meetingId) : null;
 
     let meeting = await updateMeetingDirect(meetingId, {
-      meetingName: stringValue(body.meetingName),
-      noDokumen: stringValue(body.noDokumen),
-      topikRapat: stringValue(body.topikRapat),
-      agendaRapat: stringValue(body.agendaRapat),
-      tanggalKey: stringValue(body.tanggalKey || body.meetingDateKey || body.tanggal),
-      tempat: stringValue(body.tempat),
-      waktuMulai: stringValue(body.waktuMulai),
-      waktuSelesai: stringValue(body.waktuSelesai),
-      pemimpinRapat: stringValue(body.pemimpinRapat),
-      notulis: stringValue(body.notulis),
-      prodiIds: stringArray(body.prodiIds),
-      prodiNames: stringArray(body.prodiNames),
-      prodiText: stringValue(body.prodiText),
-      catatan: body.catatan === undefined ? undefined : stringValue(body.catatan),
-      status: stringValue(body.status),
+      meetingName: optionalString(body, "meetingName"),
+      noDokumen: optionalString(body, "noDokumen"),
+      topikRapat: optionalString(body, "topikRapat"),
+      agendaRapat: optionalString(body, "agendaRapat"),
+      tanggalKey: firstOptionalString(body, ["tanggalKey", "meetingDateKey", "tanggal"]),
+      tempat: optionalString(body, "tempat"),
+      waktuMulai: optionalString(body, "waktuMulai"),
+      waktuSelesai: optionalString(body, "waktuSelesai"),
+      pemimpinRapat: optionalString(body, "pemimpinRapat"),
+      notulis: optionalString(body, "notulis"),
+      prodiIds: optionalStringArray(body, "prodiIds"),
+      prodiNames: optionalStringArray(body, "prodiNames"),
+      prodiText: optionalString(body, "prodiText"),
+      catatan: optionalString(body, "catatan"),
+      status: optionalString(body, "status"),
     });
 
     const oldImagePath = oldMeeting?.meetingImagePath || oldMeeting?.meetingImageUrl || "";

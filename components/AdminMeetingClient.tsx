@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   SearchableMultiSelect,
   SearchableSelect,
@@ -189,16 +189,6 @@ export default function AdminMeetingClient({
   const [editingMeeting, setEditingMeeting] = useState<Meeting | null>(null);
   const [selectedInvitationId, setSelectedInvitationId] = useState("");
   const [deletingId, setDeletingId] = useState("");
-  const [removeMeetingImage, setRemoveMeetingImage] = useState(false);
-  const [selectedImageName, setSelectedImageName] = useState("");
-  const [selectedImagePreviewUrl, setSelectedImagePreviewUrl] = useState("");
-  const [isCameraOpen, setIsCameraOpen] = useState(false);
-  const [isCameraStarting, setIsCameraStarting] = useState(false);
-  const [cameraError, setCameraError] = useState("");
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const cameraStreamRef = useRef<MediaStream | null>(null);
   const [state, setState] = useState<SaveState>({
     status: "idle",
     message: "",
@@ -216,25 +206,6 @@ export default function AdminMeetingClient({
       toast.error("Gagal", state.message);
     }
   }, [state.message, state.status, toast]);
-
-  useEffect(() => {
-    setRemoveMeetingImage(false);
-    setSelectedImageName("");
-    setSelectedImagePreviewUrl("");
-    setCameraError("");
-    stopCamera();
-  }, [editingMeeting?.meetingId, selectedInvitationId]);
-
-  useEffect(() => {
-    return () => {
-      stopCamera();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!selectedImagePreviewUrl) return;
-    return () => URL.revokeObjectURL(selectedImagePreviewUrl);
-  }, [selectedImagePreviewUrl]);
 
   const isSaving = state.status === "saving";
   const isEditing = Boolean(editingMeeting);
@@ -293,12 +264,6 @@ export default function AdminMeetingClient({
           : selectedInvitationId,
       );
 
-      if (isEditing && removeMeetingImage) {
-        formData.set("deleteMeetingImage", "1");
-      } else {
-        formData.delete("deleteMeetingImage");
-      }
-
       const url = editingMeeting
         ? `/api/meetings/${encodeURIComponent(editingMeeting.meetingId)}`
         : "/api/meetings";
@@ -343,9 +308,6 @@ export default function AdminMeetingClient({
 
       setEditingMeeting(null);
       setSelectedInvitationId("");
-      setRemoveMeetingImage(false);
-      setMeetingImageFile(null);
-      stopCamera();
       formElement.reset();
     } catch (error) {
       setState({
@@ -378,9 +340,6 @@ export default function AdminMeetingClient({
       setTotalItems((current) => Math.max(0, current - 1));
       if (editingMeeting?.meetingId === meetingId) {
         setEditingMeeting(null);
-        setRemoveMeetingImage(false);
-        setMeetingImageFile(null);
-        stopCamera();
       }
       setState({ status: "success", message: "Meeting berhasil dihapus." });
     } catch (error) {
@@ -409,6 +368,11 @@ export default function AdminMeetingClient({
     editingMeeting?.runForm?.agendaRapat ||
     selectedInvitation?.agendaRapat ||
     "";
+  const sourceCatatan =
+    editingMeeting?.catatan ||
+    editingMeeting?.runForm?.catatan ||
+    selectedInvitation?.catatan ||
+    "";
   const sourceWaktuMulai =
     editingMeeting?.waktuMulai || selectedInvitation?.waktuMulai || "09:00";
   const sourceWaktuSelesai =
@@ -429,117 +393,8 @@ export default function AdminMeetingClient({
     "";
   const selectedProdiIds =
     editingMeeting?.prodiIds || selectedInvitation?.prodiIds || [];
-  const sourceMeetingImageUrl = editingMeeting?.meetingImageUrl || "";
   const formKey =
     editingMeeting?.meetingId || selectedInvitationId || "new-meeting";
-
-  function stopCamera() {
-    cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
-    cameraStreamRef.current = null;
-    if (videoRef.current) videoRef.current.srcObject = null;
-    setIsCameraOpen(false);
-    setIsCameraStarting(false);
-  }
-
-  function setMeetingImageFile(file: File | null) {
-    if (selectedImagePreviewUrl) URL.revokeObjectURL(selectedImagePreviewUrl);
-
-    setSelectedImageName(file?.name || "");
-    setSelectedImagePreviewUrl(file ? URL.createObjectURL(file) : "");
-
-    if (fileInputRef.current) {
-      if (file) {
-        const transfer = new DataTransfer();
-        transfer.items.add(file);
-        fileInputRef.current.files = transfer.files;
-      } else {
-        fileInputRef.current.value = "";
-      }
-    }
-
-    if (file) setRemoveMeetingImage(false);
-  }
-
-  function handleMeetingImageChange(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0] || null;
-    setMeetingImageFile(file);
-  }
-
-  async function openCamera() {
-    try {
-      stopCamera();
-      setCameraError("");
-      setIsCameraStarting(true);
-
-      if (!navigator.mediaDevices?.getUserMedia) {
-        throw new Error("Browser tidak mendukung akses kamera langsung.");
-      }
-
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { ideal: "environment" },
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
-        audio: false,
-      });
-
-      cameraStreamRef.current = stream;
-      setIsCameraOpen(true);
-      setIsCameraStarting(false);
-
-      requestAnimationFrame(() => {
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          void videoRef.current.play();
-        }
-      });
-    } catch (error) {
-      stopCamera();
-      setCameraError(
-        error instanceof Error
-          ? error.message
-          : "Kamera tidak dapat dibuka. Periksa izin kamera browser.",
-      );
-    }
-  }
-
-  async function captureMeetingImage() {
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-
-    if (!video || !canvas || video.readyState < 2) {
-      setCameraError("Kamera belum siap. Coba tekan Ambil Foto sekali lagi.");
-      return;
-    }
-
-    const width = video.videoWidth || 1280;
-    const height = video.videoHeight || 720;
-    canvas.width = width;
-    canvas.height = height;
-    const context = canvas.getContext("2d");
-
-    if (!context) {
-      setCameraError("Gagal mengambil gambar dari kamera.");
-      return;
-    }
-
-    context.drawImage(video, 0, 0, width, height);
-    const blob = await new Promise<Blob | null>((resolve) =>
-      canvas.toBlob(resolve, "image/jpeg", 0.9),
-    );
-
-    if (!blob) {
-      setCameraError("Gagal membuat file gambar dari kamera.");
-      return;
-    }
-
-    const file = new File([blob], `kamera-meeting-${Date.now()}.jpg`, {
-      type: "image/jpeg",
-    });
-    setMeetingImageFile(file);
-    stopCamera();
-  }
 
   return (
     <main className="appShell">
@@ -579,9 +434,6 @@ export default function AdminMeetingClient({
                 className="ghostButton small"
                 onClick={() => {
                   setEditingMeeting(null);
-                  setRemoveMeetingImage(false);
-                  setMeetingImageFile(null);
-                  stopCamera();
                 }}
               >
                 Batal Edit
@@ -666,107 +518,6 @@ export default function AdminMeetingClient({
               placeholder="Evaluasi pembelajaran dan rencana tindak lanjut"
             />
           </label>
-
-          <div className="meetingImageField formLikeField">
-            <span>Gambar Meeting</span>
-            {sourceMeetingImageUrl && !removeMeetingImage ? (
-              <div className="meetingImagePreviewBox">
-                <img
-                  src={sourceMeetingImageUrl}
-                  alt={`Gambar meeting ${sourceMeetingName || "meeting"}`}
-                />
-                <button
-                  type="button"
-                  className="dangerButton small"
-                  onClick={() => setRemoveMeetingImage(true)}
-                >
-                  Hapus gambar lama
-                </button>
-              </div>
-            ) : null}
-            {sourceMeetingImageUrl && removeMeetingImage ? (
-              <div className="inlineAlert warning">
-                Gambar lama akan dihapus saat perubahan meeting disimpan.
-                <button
-                  type="button"
-                  className="ghostButton small"
-                  onClick={() => setRemoveMeetingImage(false)}
-                >
-                  Batal hapus
-                </button>
-              </div>
-            ) : null}
-            {selectedImagePreviewUrl ? (
-              <div className="meetingImagePreviewBox newImagePreviewBox">
-                <img
-                  src={selectedImagePreviewUrl}
-                  alt="Preview gambar meeting baru"
-                />
-                <span className="muted small">
-                  Gambar baru siap disimpan: {selectedImageName}
-                </span>
-                <button
-                  type="button"
-                  className="ghostButton small"
-                  onClick={() => setMeetingImageFile(null)}
-                >
-                  Batalkan gambar baru
-                </button>
-              </div>
-            ) : null}
-            <div className="meetingImageSourceActions">
-              <label className="ghostButton small filePickButton">
-                Ambil dari File
-                <input
-                  ref={fileInputRef}
-                  name="meetingImage"
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  onChange={handleMeetingImageChange}
-                />
-              </label>
-              <button
-                type="button"
-                className="ghostButton small"
-                onClick={openCamera}
-                disabled={isCameraStarting}
-              >
-                {isCameraStarting ? "Membuka Kamera..." : "Ambil dari Kamera"}
-              </button>
-            </div>
-            {isCameraOpen ? (
-              <div className="meetingCameraBox">
-                <video ref={videoRef} playsInline muted />
-                <canvas ref={canvasRef} className="hiddenCanvas" />
-                <div className="meetingImageSourceActions">
-                  <button
-                    type="button"
-                    className="primaryButton small"
-                    onClick={captureMeetingImage}
-                  >
-                    Ambil Foto
-                  </button>
-                  <button
-                    type="button"
-                    className="ghostButton small"
-                    onClick={stopCamera}
-                  >
-                    Tutup Kamera
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <canvas ref={canvasRef} className="hiddenCanvas" />
-            )}
-            {cameraError ? (
-              <span className="muted small warningText">{cameraError}</span>
-            ) : null}
-            <span className="muted small">
-              Pilih gambar dari file atau ambil foto langsung dari kamera.
-              Sistem akan menyimpan hasil kompres sekitar 200 KB di folder
-              public/uploads/meetings.
-            </span>
-          </div>
 
           <label>
             <span>Prodi Terkait</span>
@@ -867,6 +618,16 @@ export default function AdminMeetingClient({
               rows={4}
               defaultValue={sourceAgenda}
               placeholder="Tuliskan agenda awal rapat"
+            />
+          </label>
+
+          <label>
+            <span>Catatan</span>
+            <textarea
+              name="catatan"
+              rows={3}
+              defaultValue={sourceCatatan}
+              placeholder="Catatan tambahan meeting"
             />
           </label>
 
@@ -990,9 +751,6 @@ export default function AdminMeetingClient({
                       onClick={() => {
                         setEditingMeeting(meeting);
                         setSelectedInvitationId("");
-                        setRemoveMeetingImage(false);
-                        setMeetingImageFile(null);
-                        stopCamera();
                       }}
                     >
                       Edit
