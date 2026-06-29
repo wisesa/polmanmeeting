@@ -91,6 +91,7 @@ export type MeetingRunForm = {
   agendaRapat?: string;
   pembahasan?: string;
   hasilRapat?: string;
+  catatan?: string;
   catatanTambahan?: string;
   tindakLanjut?: string;
   pemimpinRapat?: string;
@@ -141,6 +142,10 @@ export type Presence = {
   name: string;
   nameKey: string;
   faceId?: string;
+  hasFaceThumbnail?: boolean;
+  faceThumbnailBase64?: string;
+  faceThumbnailMimeType?: string;
+  faceThumbnailUpdatedAt?: number | null;
   jabatan?: string;
   prodi?: string;
   prodiId?: string;

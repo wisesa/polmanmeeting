@@ -9,6 +9,9 @@ type Presence = {
   name?: string;
   nameKey?: string;
   faceId?: string;
+  faceThumbnailBase64?: string;
+  faceThumbnailMimeType?: string;
+  hasFaceThumbnail?: boolean;
   jabatan?: string;
   prodi?: string;
   method?: string;
@@ -84,6 +87,17 @@ function formatTime(value?: number) {
 function formatScore(value?: number) {
   if (typeof value !== "number" || !Number.isFinite(value)) return "-";
   return value.toFixed(4);
+}
+
+function dataUrlFromBase64(base64?: string, mimeType = "image/jpeg") {
+  const cleanBase64 = typeof base64 === "string" ? base64.trim() : "";
+  if (!cleanBase64) return "";
+  if (cleanBase64.startsWith("data:")) return cleanBase64;
+  return `data:${mimeType || "image/jpeg"};base64,${cleanBase64}`;
+}
+
+function presenceFaceSrc(presence: Presence) {
+  return dataUrlFromBase64(presence.faceThumbnailBase64, presence.faceThumbnailMimeType || "image/jpeg");
 }
 
 export default function PresenceListLive({
@@ -212,8 +226,12 @@ export default function PresenceListLive({
               className="presenceCard"
               key={presence.id || presence.nameKey || `${presence.name}-${index}`}
             >
-              <div className="presenceAvatar">
-                {(presence.name || "?").charAt(0).toUpperCase()}
+              <div className={presenceFaceSrc(presence) ? "presenceAvatar presencePhotoAvatar" : "presenceAvatar"}>
+                {presenceFaceSrc(presence) ? (
+                  <img src={presenceFaceSrc(presence)} alt={`Preview wajah ${presence.name || "peserta"}`} />
+                ) : (
+                  (presence.name || "?").charAt(0).toUpperCase()
+                )}
               </div>
 
               <div className="presenceInfo">

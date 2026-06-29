@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdminRequest } from "@/lib/auth/admin-session";
+import { requireMeetingReadRequest } from "@/lib/auth/read-session";
 import { saveMeetingRunForm } from "@/lib/firebase/db";
 
 export const runtime = "nodejs";
@@ -21,7 +21,7 @@ function numberOrNull(value: unknown) {
 
 export async function PATCH(request: NextRequest, context: RouteContext) {
   try {
-    await requireAdminRequest(request);
+    await requireMeetingReadRequest(request);
     const params = await Promise.resolve(context.params);
     const meetingId = decodeURIComponent(params.meetingId || "").trim();
     const body = (await request.json()) as Record<string, unknown>;
@@ -34,6 +34,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       agendaRapat: stringValue(body.agendaRapat),
       pembahasan: stringValue(body.pembahasan),
       hasilRapat: stringValue(body.hasilRapat),
+      catatan: stringValue(body.catatan),
       catatanTambahan: stringValue(body.catatanTambahan),
       tindakLanjut: stringValue(body.tindakLanjut),
       pemimpinRapat: stringValue(body.pemimpinRapat),
@@ -45,7 +46,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     return NextResponse.json({ success: true, meeting });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Form meeting gagal disimpan.";
-    const status = message.includes("Sesi admin") ? 401 : 400;
+    const status = message.includes("Sesi") ? 401 : 400;
     return NextResponse.json({ success: false, message }, { status });
   }
 }

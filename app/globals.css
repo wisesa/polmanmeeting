@@ -5779,3 +5779,32 @@ body {
 .faceLoginCard .cameraOverlay {
   z-index: 3;
 }
+
+/* Preview wajah peserta presensi */
+.presencePhotoAvatar {
+  overflow: hidden;
+  background: #e2e8f0 !important;
+}
+
+.presencePhotoAvatar img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.adminMeetingPresenceBlock {
+  margin-top: 22px;
+}
+
+.meetingEditSection {
+  margin-top: 18px;
+}
+
+.meetingEditPanel {
+  padding: 22px;
+}
+
+.meetingEditForm {
+  margin-top: 14px;
+}

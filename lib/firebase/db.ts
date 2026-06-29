@@ -198,6 +198,7 @@ function mapRunForm(raw: Record<string, unknown>): MeetingRunForm | undefined {
     agendaRapat: cleanString(raw.agendaRapat),
     pembahasan: cleanString(raw.pembahasan),
     hasilRapat: cleanString(raw.hasilRapat),
+    catatan: cleanString(raw.catatan),
     catatanTambahan: cleanString(raw.catatanTambahan),
     tindakLanjut: cleanString(raw.tindakLanjut),
     pemimpinRapat: cleanString(raw.pemimpinRapat),
@@ -217,6 +218,10 @@ function mapPresence(nameKey: string, raw: Record<string, unknown>): Presence | 
     name,
     nameKey: cleanString(raw.nameKey, nameKey),
     faceId: cleanString(raw.faceId),
+    hasFaceThumbnail: asBool(raw.hasFaceThumbnail) || Boolean(cleanString(raw.faceThumbnailBase64)),
+    faceThumbnailBase64: cleanString(raw.faceThumbnailBase64),
+    faceThumbnailMimeType: cleanString(raw.faceThumbnailMimeType, cleanString(raw.faceThumbnailBase64) ? "image/jpeg" : ""),
+    faceThumbnailUpdatedAt: raw.faceThumbnailUpdatedAt === null ? null : numberFromFirestore(raw.faceThumbnailUpdatedAt),
     jabatan: cleanString(raw.jabatan),
     prodi: cleanString(raw.prodi),
     prodiId: cleanString(raw.prodiId),
@@ -489,6 +494,48 @@ export async function getMeeting(meetingId: string, collectionPath = "meetings")
   return mapMeetingFromRaw(cleanMeetingId, mapFromSnapshot(snap.data()));
 }
 
+async function fillPresenceFaceThumbnails(presences: Presence[]): Promise<Presence[]> {
+  const missingKeys = Array.from(
+    new Set(
+      presences
+        .filter((presence) => !presence.faceThumbnailBase64 && Boolean(presence.nameKey))
+        .map((presence) => makeSafeDocId(presence.nameKey))
+        .filter(Boolean)
+    )
+  );
+
+  if (missingKeys.length === 0) return presences;
+
+  const faceSnaps = await Promise.all(
+    missingKeys.map((key) => firestoreDb().collection("registered_faces").doc(key).get())
+  );
+
+  const thumbnailByNameKey = new Map<string, Pick<Presence, "hasFaceThumbnail" | "faceThumbnailBase64" | "faceThumbnailMimeType" | "faceThumbnailUpdatedAt">>();
+
+  for (const snap of faceSnaps) {
+    if (!snap.exists) continue;
+
+    const raw = mapFromSnapshot(snap.data());
+    const faceThumbnailBase64 = cleanString(raw.faceThumbnailBase64);
+    if (!faceThumbnailBase64) continue;
+
+    thumbnailByNameKey.set(snap.id, {
+      hasFaceThumbnail: true,
+      faceThumbnailBase64,
+      faceThumbnailMimeType: cleanString(raw.faceThumbnailMimeType, "image/jpeg"),
+      faceThumbnailUpdatedAt: raw.faceThumbnailUpdatedAt === null ? null : numberFromFirestore(raw.faceThumbnailUpdatedAt),
+    });
+  }
+
+  if (thumbnailByNameKey.size === 0) return presences;
+
+  return presences.map((presence) => {
+    if (presence.faceThumbnailBase64) return presence;
+    const thumbnail = thumbnailByNameKey.get(makeSafeDocId(presence.nameKey));
+    return thumbnail ? { ...presence, ...thumbnail } : presence;
+  });
+}
+
 export async function getPresenceList(meetingId: string, collectionPath = "meetings"): Promise<Presence[]> {
   const cleanMeetingId = meetingId.trim();
   if (!cleanMeetingId) return [];
@@ -501,7 +548,9 @@ export async function getPresenceList(meetingId: string, collectionPath = "meeti
     if (presence) presences.push(presence);
   }
 
-  return presences.sort((a, b) => {
+  const hydratedPresences = await fillPresenceFaceThumbnails(presences);
+
+  return hydratedPresences.sort((a, b) => {
     const timeB = b.lastCheckInAt || b.firstCheckInAt || b.updatedAt || 0;
     const timeA = a.lastCheckInAt || a.firstCheckInAt || a.updatedAt || 0;
     return timeB - timeA;
@@ -1029,6 +1078,7 @@ export async function saveMeetingRunForm(meetingId: string, params: MeetingRunFo
     agendaRapat: cleanString(params.agendaRapat, meeting.agendaRapat || ""),
     pembahasan: cleanString(params.pembahasan),
     hasilRapat: cleanString(params.hasilRapat),
+    catatan: cleanString(params.catatan, meeting.catatan || meeting.runForm?.catatan || ""),
     catatanTambahan: cleanString(params.catatanTambahan),
     tindakLanjut: cleanString(params.tindakLanjut),
     pemimpinRapat: cleanString(params.pemimpinRapat, meeting.pemimpinRapat || ""),
@@ -1044,6 +1094,7 @@ export async function saveMeetingRunForm(meetingId: string, params: MeetingRunFo
       agendaRapat: runForm.agendaRapat || "",
       pembahasan: runForm.pembahasan || "",
       hasilRapat: runForm.hasilRapat || "",
+      catatan: runForm.catatan || "",
       catatanTambahan: runForm.catatanTambahan || "",
       tindakLanjut: runForm.tindakLanjut || "",
       pemimpinRapat: runForm.pemimpinRapat || "",
@@ -1335,6 +1386,9 @@ export async function upsertPresence(params: {
   name: string;
   nameKey?: string;
   faceId?: string;
+  faceThumbnailBase64?: string;
+  faceThumbnailMimeType?: string;
+  faceThumbnailUpdatedAt?: number | null;
   jabatan?: string;
   prodi?: string;
   prodiId?: string;
@@ -1377,6 +1431,10 @@ export async function upsertPresence(params: {
       name,
       nameKey,
       faceId: cleanString(params.faceId, cleanString(existing.faceId)),
+      hasFaceThumbnail: Boolean(cleanString(params.faceThumbnailBase64) || cleanString(existing.faceThumbnailBase64)),
+      faceThumbnailBase64: cleanString(params.faceThumbnailBase64, cleanString(existing.faceThumbnailBase64)),
+      faceThumbnailMimeType: cleanString(params.faceThumbnailMimeType, cleanString(existing.faceThumbnailMimeType, "image/jpeg")),
+      faceThumbnailUpdatedAt: params.faceThumbnailBase64 ? now : existing.faceThumbnailUpdatedAt === null ? null : numberFromFirestore(existing.faceThumbnailUpdatedAt),
       jabatan: cleanString(params.jabatan, cleanString(existing.jabatan)),
       prodi: cleanString(params.prodiName || params.prodi, cleanString(existing.prodiName || existing.prodi)),
       prodiId: cleanString(params.prodiId, cleanString(existing.prodiId)),

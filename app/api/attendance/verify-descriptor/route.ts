@@ -122,6 +122,8 @@ export async function POST(request: NextRequest) {
       name,
       nameKey,
       faceId: stringValue(matchedFace.faceId) || nameKey,
+      faceThumbnailBase64: stringValue(matchedFace.faceThumbnailBase64),
+      faceThumbnailMimeType: stringValue(matchedFace.faceThumbnailMimeType) || "image/jpeg",
       jabatan: stringValue(matchedFace.jabatan),
       prodi: stringValue(matchedFace.prodiName) || stringValue(matchedFace.prodi),
       prodiId: stringValue(matchedFace.prodiId),

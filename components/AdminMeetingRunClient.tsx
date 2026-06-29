@@ -5,6 +5,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { SearchableSelect, type LookupOption } from "@/components/SearchLookup";
 import type { Meeting } from "@/lib/firebase/schema";
 import { useToast } from "@/components/ToastProvider";
+import PresenceListLive from "@/components/PresenceListLive";
 
 type FacePersonOption = {
   name: string;
@@ -227,6 +228,10 @@ export default function AdminMeetingRunClient({ meeting, faceOptions }: AdminMee
             <span className="muted small">Update terakhir {formatDate(activeMeeting.updatedAt)}</span>
           </div>
         </form>
+
+        <div className="adminMeetingPresenceBlock">
+          <PresenceListLive meetingId={activeMeeting.meetingId} />
+        </div>
 
       </section>
     </main>
