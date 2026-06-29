@@ -5851,3 +5851,117 @@ body {
 .meetingEditForm {
   margin-top: 14px;
 }
+
+/* Meeting image upload and preview */
+.meetingImageField input[type="file"] {
+  cursor: pointer;
+}
+
+.meetingImagePreviewBox {
+  display: grid;
+  gap: 10px;
+  align-items: start;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.meetingImagePreviewBox img,
+.meetingCardImage,
+.meetingDetailImage {
+  display: block;
+  width: 100%;
+  object-fit: cover;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background: #f7fbfa;
+}
+
+.meetingImagePreviewBox img {
+  max-height: 260px;
+}
+
+.meetingCardImage {
+  height: 170px;
+  margin: 4px 0 12px;
+}
+
+.meetingDetailImage {
+  max-height: 300px;
+  margin: 12px 0 14px;
+}
+
+.meetingImageField .inlineAlert.warning {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 0;
+  padding: 12px;
+  border-radius: 16px;
+}
+
+/* Meeting image source: file or direct camera */
+.meetingImageSourceActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.filePickButton {
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.filePickButton input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.meetingCameraBox {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.meetingCameraBox video {
+  width: 100%;
+  max-height: 320px;
+  object-fit: cover;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background: #0f172a;
+}
+
+.hiddenCanvas {
+  display: none;
+}
+
+.newImagePreviewBox {
+  margin-bottom: 4px;
+}
+
+.warningText {
+  color: #92400e;
+}
+
+.formLikeField {
+  display: grid;
+  gap: 8px;
+}
+
+.formLikeField > span:first-child {
+  font-weight: 700;
+  color: var(--text);
+}

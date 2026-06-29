@@ -286,6 +286,12 @@ function mapMeetingFromRaw(meetingId: string, raw: Record<string, unknown>): Mee
     meetingId: cleanString(raw.meetingId, meetingId),
     meetingName: cleanString(raw.meetingName || raw.name || raw.title, meetingId),
     noDokumen: cleanString(raw.noDokumen),
+    meetingImageUrl: cleanString(raw.meetingImageUrl),
+    meetingImagePath: cleanString(raw.meetingImagePath || raw.meetingImageUrl),
+    meetingImageFileName: cleanString(raw.meetingImageFileName),
+    meetingImageMimeType: cleanString(raw.meetingImageMimeType),
+    meetingImageSize: asNumber(raw.meetingImageSize),
+    meetingImageUpdatedAt: raw.meetingImageUpdatedAt === null ? null : numberFromFirestore(raw.meetingImageUpdatedAt),
     catatan: cleanString(raw.catatan),
     tanggal: cleanString(raw.tanggal),
     hari: cleanString(raw.hari),
@@ -1040,6 +1046,49 @@ export async function updateMeetingDirect(meetingId: string, params: {
   if (!updated) throw new Error("Meeting gagal dimuat setelah disimpan.");
   return updated;
 }
+export async function setMeetingImageMeta(meetingId: string, image: {
+  meetingImageUrl: string;
+  meetingImagePath: string;
+  meetingImageFileName: string;
+  meetingImageMimeType: string;
+  meetingImageSize: number;
+  meetingImageUpdatedAt: number;
+} | null): Promise<Meeting> {
+  const cleanMeetingId = cleanString(meetingId);
+  if (!cleanMeetingId) throw new Error("meetingId wajib diisi.");
+
+  const existing = await getMeeting(cleanMeetingId);
+  if (!existing) throw new Error("Meeting tidak ditemukan.");
+
+  const now = millisNow();
+  const patch: Record<string, unknown> = image
+    ? {
+        meetingImageUrl: image.meetingImageUrl,
+        meetingImagePath: image.meetingImagePath,
+        meetingImageFileName: image.meetingImageFileName,
+        meetingImageMimeType: image.meetingImageMimeType,
+        meetingImageSize: image.meetingImageSize,
+        meetingImageUpdatedAt: image.meetingImageUpdatedAt,
+      }
+    : {
+        meetingImageUrl: FieldValue.delete(),
+        meetingImagePath: FieldValue.delete(),
+        meetingImageFileName: FieldValue.delete(),
+        meetingImageMimeType: FieldValue.delete(),
+        meetingImageSize: FieldValue.delete(),
+        meetingImageUpdatedAt: FieldValue.delete(),
+      };
+
+  await firestoreDb().collection("meetings").doc(cleanMeetingId).set(
+    cleanFirestoreData({ ...patch, updatedAt: now, syncedAt: serverTimestamp() }),
+    { merge: true }
+  );
+
+  const updated = await getMeeting(cleanMeetingId);
+  if (!updated) throw new Error("Meeting gagal dimuat setelah gambar disimpan.");
+  return updated;
+}
+
 
 async function deleteSubcollection(collectionRef: CollectionReference, batchSize = 400) {
   while (true) {
@@ -1117,11 +1166,11 @@ export async function saveMeetingRunForm(meetingId: string, params: MeetingRunFo
 
   const runForm: MeetingRunForm = {
     agendaRapat: cleanString(params.agendaRapat, meeting.agendaRapat || ""),
-    pembahasan: cleanString(params.pembahasan),
-    hasilRapat: cleanString(params.hasilRapat),
-    catatan: cleanString(params.catatan, meeting.catatan || meeting.runForm?.catatan || ""),
-    catatanTambahan: cleanString(params.catatanTambahan),
-    tindakLanjut: cleanString(params.tindakLanjut),
+    pembahasan: params.pembahasan === undefined ? (meeting.runForm?.pembahasan || meeting.pembahasan || "") : cleanString(params.pembahasan),
+    hasilRapat: params.hasilRapat === undefined ? (meeting.runForm?.hasilRapat || meeting.hasilRapat || "") : cleanString(params.hasilRapat),
+    catatan: params.catatan === undefined ? (meeting.runForm?.catatan || meeting.catatan || "") : cleanString(params.catatan, meeting.catatan || meeting.runForm?.catatan || ""),
+    catatanTambahan: params.catatanTambahan === undefined ? (meeting.runForm?.catatanTambahan || meeting.catatanTambahan || "") : cleanString(params.catatanTambahan),
+    tindakLanjut: params.tindakLanjut === undefined ? (meeting.runForm?.tindakLanjut || meeting.tindakLanjut || "") : cleanString(params.tindakLanjut),
     pemimpinRapat: cleanString(params.pemimpinRapat, meeting.pemimpinRapat || ""),
     notulis: cleanString(params.notulis, meeting.notulis || ""),
     startedAt: asNumber(params.startedAt, meeting.runForm?.startedAt || meeting.createdAt || now),

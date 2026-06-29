@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminRequest } from "@/lib/auth/admin-session";
 import { requireMeetingReadRequest } from "@/lib/auth/read-session";
-import { deleteMeeting, getMeeting, getPresenceList, updateMeetingDirect } from "@/lib/firebase/db";
+import { deleteMeeting, getMeeting, getPresenceList, setMeetingImageMeta, updateMeetingDirect } from "@/lib/firebase/db";
+import { deletePublicMeetingImage, saveCompressedMeetingImage, validateMeetingImageFile } from "@/lib/utils/meeting-image";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,9 +21,38 @@ function stringArray(value: unknown): string[] {
   return value.map((item) => stringValue(item)).filter(Boolean);
 }
 
+function boolValue(value: unknown) {
+  if (typeof value === "boolean") return value;
+  if (typeof value !== "string") return false;
+  return ["1", "true", "yes", "on", "hapus"].includes(value.trim().toLowerCase());
+}
+
+function formFile(formData: FormData, key: string) {
+  const value = formData.get(key);
+  return value instanceof File && value.size > 0 ? value : null;
+}
+
+async function readMeetingPayload(request: NextRequest) {
+  const contentType = request.headers.get("content-type") || "";
+
+  if (contentType.includes("multipart/form-data")) {
+    const formData = await request.formData();
+    const body: Record<string, unknown> = Object.fromEntries(formData.entries());
+    body.prodiIds = formData.getAll("prodiIds").map((item) => stringValue(item)).filter(Boolean);
+    body.prodiNames = formData.getAll("prodiNames").map((item) => stringValue(item)).filter(Boolean);
+    body.deleteMeetingImage = formData.get("deleteMeetingImage");
+    const imageFile = formFile(formData, "meetingImage");
+    validateMeetingImageFile(imageFile);
+    return { body, imageFile };
+  }
+
+  const body = (await request.json()) as Record<string, unknown>;
+  return { body, imageFile: null as File | null };
+}
+
 function statusFromError(message: string) {
   if (message.includes("Sesi admin")) return 401;
-  if (message.includes("tidak ditemukan")) return 404;
+  if (message.includes("tidak ditemukan") || message.includes("Tidak ditemukan")) return 404;
   return 400;
 }
 
@@ -78,9 +108,11 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   try {
     await requireAdminRequest(request);
     const meetingId = await readMeetingId(context);
-    const body = (await request.json()) as Record<string, unknown>;
+    const { body, imageFile } = await readMeetingPayload(request);
+    const deleteImage = boolValue(body.deleteMeetingImage);
+    const oldMeeting = imageFile || deleteImage ? await getMeeting(meetingId) : null;
 
-    const meeting = await updateMeetingDirect(meetingId, {
+    let meeting = await updateMeetingDirect(meetingId, {
       meetingName: stringValue(body.meetingName),
       noDokumen: stringValue(body.noDokumen),
       topikRapat: stringValue(body.topikRapat),
@@ -94,9 +126,29 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       prodiIds: stringArray(body.prodiIds),
       prodiNames: stringArray(body.prodiNames),
       prodiText: stringValue(body.prodiText),
-      catatan: stringValue(body.catatan),
+      catatan: body.catatan === undefined ? undefined : stringValue(body.catatan),
       status: stringValue(body.status),
     });
+
+    const oldImagePath = oldMeeting?.meetingImagePath || oldMeeting?.meetingImageUrl || "";
+
+    if (imageFile) {
+      const savedImage = await saveCompressedMeetingImage(imageFile, meetingId);
+      if (savedImage) {
+        try {
+          meeting = await setMeetingImageMeta(meetingId, savedImage);
+        } catch (error) {
+          await deletePublicMeetingImage(savedImage.meetingImagePath);
+          throw error;
+        }
+        if (oldImagePath && oldImagePath !== savedImage.meetingImagePath) {
+          await deletePublicMeetingImage(oldImagePath);
+        }
+      }
+    } else if (deleteImage && oldImagePath) {
+      meeting = await setMeetingImageMeta(meetingId, null);
+      await deletePublicMeetingImage(oldImagePath);
+    }
 
     return NextResponse.json({ success: true, meeting });
   } catch (error) {
@@ -109,7 +161,12 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
   try {
     await requireAdminRequest(request);
     const meetingId = await readMeetingId(context);
+    const meeting = await getMeeting(meetingId);
+    const imagePath = meeting?.meetingImagePath || meeting?.meetingImageUrl || "";
+
     await deleteMeeting(meetingId);
+    await deletePublicMeetingImage(imagePath);
+
     return NextResponse.json({ success: true, message: "Meeting berhasil dihapus." });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Meeting gagal dihapus.";

@@ -106,6 +106,12 @@ export type Meeting = {
   meetingId: string;
   meetingName: string;
   noDokumen?: string;
+  meetingImageUrl?: string;
+  meetingImagePath?: string;
+  meetingImageFileName?: string;
+  meetingImageMimeType?: string;
+  meetingImageSize?: number;
+  meetingImageUpdatedAt?: number | null;
   catatan?: string;
   tanggal?: string;
   hari?: string;

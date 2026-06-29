@@ -1,7 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  FormEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import CameraAttendance from "@/components/CameraAttendance";
 import { useToast } from "@/components/ToastProvider";
 
@@ -38,7 +45,9 @@ function numberValue(value: unknown, fallback = 0) {
 }
 
 function recordValue(value: unknown): AnyRecord {
-  return value && typeof value === "object" && !Array.isArray(value) ? value as AnyRecord : {};
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as AnyRecord)
+    : {};
 }
 
 function getMeetingTitle(meeting: AnyRecord | null) {
@@ -70,7 +79,9 @@ function getMeetingProdi(meeting: AnyRecord | null) {
   const text = stringValue(meeting.prodiText);
   if (text) return text;
   if (Array.isArray(meeting.prodiNames)) {
-    const values = meeting.prodiNames.map((item) => stringValue(item)).filter(Boolean);
+    const values = meeting.prodiNames
+      .map((item) => stringValue(item))
+      .filter(Boolean);
     if (values.length > 0) return values.join(", ");
   }
   return stringValue(meeting.prodi, "-");
@@ -116,7 +127,12 @@ function getPresenceName(presence: AnyRecord) {
 
 function getPresenceRole(presence: AnyRecord) {
   return (
-    [stringValue(presence.jabatan), stringValue(presence.prodiName) || stringValue(presence.prodi)].filter(Boolean).join(" • ") ||
+    [
+      stringValue(presence.jabatan),
+      stringValue(presence.prodiName) || stringValue(presence.prodi),
+    ]
+      .filter(Boolean)
+      .join(" • ") ||
     stringValue(presence.role) ||
     "Peserta"
   );
@@ -177,7 +193,10 @@ function dataUrlFromBase64(base64: unknown, mimeType: unknown = "image/jpeg") {
 }
 
 function getPresenceFaceSrc(presence: AnyRecord) {
-  return dataUrlFromBase64(presence.faceThumbnailBase64, presence.faceThumbnailMimeType || "image/jpeg");
+  return dataUrlFromBase64(
+    presence.faceThumbnailBase64,
+    presence.faceThumbnailMimeType || "image/jpeg",
+  );
 }
 
 function getMeetingFormValue(meeting: AnyRecord | null, key: string) {
@@ -223,11 +242,14 @@ export default function MeetingDetailClient({
 }: MeetingDetailClientProps) {
   const [meeting, setMeeting] = useState<AnyRecord | null>(initialMeeting);
   const [presences, setPresences] = useState<AnyRecord[]>(
-    Array.isArray(initialPresences) ? initialPresences : []
+    Array.isArray(initialPresences) ? initialPresences : [],
   );
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const [saveState, setSaveState] = useState<SaveState>({ status: "idle", message: "" });
+  const [saveState, setSaveState] = useState<SaveState>({
+    status: "idle",
+    message: "",
+  });
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const toast = useToast();
   const lastErrorToastRef = useRef("");
@@ -263,7 +285,7 @@ export default function MeetingDetailClient({
           {
             method: "GET",
             cache: "no-store",
-          }
+          },
         );
 
         const text = await response.text();
@@ -273,7 +295,9 @@ export default function MeetingDetailClient({
         try {
           data = JSON.parse(text) as ApiResponse;
         } catch {
-          throw new Error("Data terbaru belum bisa dimuat. Data terakhir tetap ditampilkan.");
+          throw new Error(
+            "Data terbaru belum bisa dimuat. Data terakhir tetap ditampilkan.",
+          );
         }
 
         if (!response.ok || !data.success) {
@@ -287,13 +311,13 @@ export default function MeetingDetailClient({
         setErrorMessage(
           error instanceof Error
             ? error.message
-            : "Gagal memuat data presensi."
+            : "Gagal memuat data presensi.",
         );
       } finally {
         setIsRefreshing(false);
       }
     },
-    [meetingId]
+    [meetingId],
   );
 
   async function handleMeetingFormSubmit(event: FormEvent<HTMLFormElement>) {
@@ -301,26 +325,35 @@ export default function MeetingDetailClient({
     const formData = new FormData(event.currentTarget);
 
     try {
-      setSaveState({ status: "saving", message: "Menyimpan perubahan notulen..." });
-
-      const response = await fetch(`/api/meetings/${encodeURIComponent(meetingId)}/run-form`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          agendaRapat: getFormString(formData, "agendaRapat"),
-          pembahasan: getFormString(formData, "pembahasan"),
-          hasilRapat: getFormString(formData, "hasilRapat"),
-          catatan: getFormString(formData, "catatan"),
-          catatanTambahan: getFormString(formData, "catatanTambahan"),
-          tindakLanjut: getFormString(formData, "tindakLanjut"),
-          pemimpinRapat: getFormString(formData, "pemimpinRapat"),
-          notulis: getFormString(formData, "notulis"),
-          status: isClosed ? "closed" : "active",
-          finishedAt: isClosed ? numberValue(meeting?.closedAt, Date.now()) : null,
-        }),
+      setSaveState({
+        status: "saving",
+        message: "Menyimpan perubahan notulen...",
       });
 
-      const data = (await response.json()) as { success?: boolean; message?: string; meeting?: AnyRecord | null };
+      const response = await fetch(
+        `/api/meetings/${encodeURIComponent(meetingId)}/run-form`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            agendaRapat: getFormString(formData, "agendaRapat"),
+            hasilRapat: getFormString(formData, "hasilRapat"),
+            tindakLanjut: getFormString(formData, "tindakLanjut"),
+            pemimpinRapat: getFormString(formData, "pemimpinRapat"),
+            notulis: getFormString(formData, "notulis"),
+            status: isClosed ? "closed" : "active",
+            finishedAt: isClosed
+              ? numberValue(meeting?.closedAt, Date.now())
+              : null,
+          }),
+        },
+      );
+
+      const data = (await response.json()) as {
+        success?: boolean;
+        message?: string;
+        meeting?: AnyRecord | null;
+      };
 
       if (!response.ok || data.success === false) {
         throw new Error(data.message || "Notulen gagal disimpan.");
@@ -328,14 +361,20 @@ export default function MeetingDetailClient({
 
       if (data.meeting) {
         setMeeting(data.meeting);
-        setLastUpdated(new Date(numberValue(data.meeting.updatedAt, Date.now())));
+        setLastUpdated(
+          new Date(numberValue(data.meeting.updatedAt, Date.now())),
+        );
       }
 
-      setSaveState({ status: "success", message: "Notulen dan catatan berhasil diperbarui." });
+      setSaveState({
+        status: "success",
+        message: "Notulen berhasil diperbarui.",
+      });
     } catch (error) {
       setSaveState({
         status: "error",
-        message: error instanceof Error ? error.message : "Notulen gagal disimpan.",
+        message:
+          error instanceof Error ? error.message : "Notulen gagal disimpan.",
       });
     }
   }
@@ -372,23 +411,26 @@ export default function MeetingDetailClient({
   const meetingTime = getMeetingTime(meeting);
   const meetingProdi = getMeetingProdi(meeting);
   const isClosed = ["closed", "close", "selesai", "ditutup"].includes(
-    status.toLowerCase()
+    status.toLowerCase(),
   );
   const isSavingForm = saveState.status === "saving";
   const defaultAgendaRapat = getMeetingFormValue(meeting, "agendaRapat");
-  const defaultPembahasan = getMeetingFormValue(meeting, "pembahasan");
   const defaultHasilRapat = getMeetingFormValue(meeting, "hasilRapat");
-  const defaultCatatan = getMeetingFormValue(meeting, "catatan");
-  const defaultCatatanTambahan = getMeetingFormValue(meeting, "catatanTambahan");
   const defaultTindakLanjut = getMeetingFormValue(meeting, "tindakLanjut");
   const defaultPemimpinRapat = getMeetingFormValue(meeting, "pemimpinRapat");
   const defaultNotulis = getMeetingFormValue(meeting, "notulis");
+  const meetingImageUrl = stringValue(meeting?.meetingImageUrl);
 
   return (
     <main className="meetingDetailPage">
       <div className="meetingDetailShell">
         <div className="meetingTopBar">
-          <Link href={backHref} className="iconButton" aria-label="Kembali" title="Kembali">
+          <Link
+            href={backHref}
+            className="iconButton"
+            aria-label="Kembali"
+            title="Kembali"
+          >
             <svg
               viewBox="0 0 24 24"
               fill="none"
@@ -441,33 +483,50 @@ export default function MeetingDetailClient({
               <p className="eyebrow">Detail Meeting</p>
               <h1>{title}</h1>
               <p className="meetingIdText">ID Meeting: {meetingId}</p>
+              {meetingImageUrl ? (
+                <img
+                  className="meetingDetailImage"
+                  src={meetingImageUrl}
+                  alt={`Gambar meeting ${title}`}
+                />
+              ) : null}
 
               <div className="meetingInfoGridV2">
                 <div className="meetingInfoCardV2 meetingInfoCardV2Full">
                   <span className="meetingInfoCardV2Label">Prodi</span>
-                  <strong className="meetingInfoCardV2Value">{meetingProdi}</strong>
+                  <strong className="meetingInfoCardV2Value">
+                    {meetingProdi}
+                  </strong>
                 </div>
 
                 <div className="meetingInfoCardV2">
                   <span className="meetingInfoCardV2Label">Status</span>
-                  <strong className={`meetingInfoCardV2Value ${isClosed ? "statusClosed" : "statusActive"}`}>
+                  <strong
+                    className={`meetingInfoCardV2Value ${isClosed ? "statusClosed" : "statusActive"}`}
+                  >
                     {status}
                   </strong>
                 </div>
 
                 <div className="meetingInfoCardV2">
                   <span className="meetingInfoCardV2Label">Waktu</span>
-                  <strong className="meetingInfoCardV2Value">{meetingTime}</strong>
+                  <strong className="meetingInfoCardV2Value">
+                    {meetingTime}
+                  </strong>
                 </div>
 
                 <div className="meetingInfoCardV2 meetingInfoCardV2Highlight">
                   <span className="meetingInfoCardV2Label">Hadir</span>
-                  <strong className="meetingInfoCardV2Value">{sortedPresences.length} peserta</strong>
+                  <strong className="meetingInfoCardV2Value">
+                    {sortedPresences.length} peserta
+                  </strong>
                 </div>
 
                 <div className="meetingInfoCardV2">
                   <span className="meetingInfoCardV2Label">Update</span>
-                  <strong className="meetingInfoCardV2Value">{formatUpdateTime(lastUpdated)}</strong>
+                  <strong className="meetingInfoCardV2Value">
+                    {formatUpdateTime(lastUpdated)}
+                  </strong>
                 </div>
               </div>
             </div>
@@ -492,60 +551,79 @@ export default function MeetingDetailClient({
           <div className="presencePanel meetingEditPanel">
             <div className="presencePanelHeader">
               <div>
-                <p className="eyebrow">Notulen Meeting</p>
-                <h2>Edit Notulen dan Catatan</h2>
-                <p className="muted">Dosen dapat memperbarui pemimpin rapat, notulen, pembahasan, hasil, tindak lanjut, dan catatan.</p>
+                <p className="eyebrow">Form Meeting</p>
+                <h2>Edit Notulen</h2>
+                <p className="muted">
+                  Dosen dapat memperbarui pemimpin rapat, notulen, agenda, hasil
+                  rapat, dan tindak lanjut.
+                </p>
               </div>
             </div>
 
-            <form className="modernForm meetingEditForm" onSubmit={handleMeetingFormSubmit}>
+            <form
+              className="modernForm meetingEditForm"
+              onSubmit={handleMeetingFormSubmit}
+            >
               <div className="formGrid two">
                 <label>
                   <span>Pemimpin Rapat</span>
-                  <input name="pemimpinRapat" defaultValue={defaultPemimpinRapat} placeholder="Nama pemimpin rapat" />
+                  <input
+                    name="pemimpinRapat"
+                    defaultValue={defaultPemimpinRapat}
+                    placeholder="Nama pemimpin rapat"
+                  />
                 </label>
                 <label>
                   <span>Notulen</span>
-                  <input name="notulis" defaultValue={defaultNotulis} placeholder="Notulen" />
+                  <input
+                    name="notulis"
+                    defaultValue={defaultNotulis}
+                    placeholder="Notulen"
+                  />
                 </label>
               </div>
 
               <label>
                 <span>Agenda Rapat</span>
-                <textarea name="agendaRapat" rows={3} defaultValue={defaultAgendaRapat} placeholder="Tuliskan agenda rapat" />
-              </label>
-
-              <label>
-                <span>Pembahasan</span>
-                <textarea name="pembahasan" rows={4} defaultValue={defaultPembahasan} placeholder="Ringkas jalannya pembahasan" />
+                <textarea
+                  name="agendaRapat"
+                  rows={3}
+                  defaultValue={defaultAgendaRapat}
+                  placeholder="Tuliskan agenda rapat"
+                />
               </label>
 
               <label>
                 <span>Hasil Rapat</span>
-                <textarea name="hasilRapat" rows={4} defaultValue={defaultHasilRapat} placeholder="Tuliskan keputusan atau kesepakatan" />
+                <textarea
+                  name="hasilRapat"
+                  rows={4}
+                  defaultValue={defaultHasilRapat}
+                  placeholder="Tuliskan keputusan atau kesepakatan"
+                />
               </label>
 
               <label>
                 <span>Tindak Lanjut</span>
-                <textarea name="tindakLanjut" rows={3} defaultValue={defaultTindakLanjut} placeholder="PIC, target waktu, atau pekerjaan lanjutan" />
+                <textarea
+                  name="tindakLanjut"
+                  rows={3}
+                  defaultValue={defaultTindakLanjut}
+                  placeholder="PIC, target waktu, atau pekerjaan lanjutan"
+                />
               </label>
 
-              <div className="formGrid two">
-                <label>
-                  <span>Catatan</span>
-                  <textarea name="catatan" rows={3} defaultValue={defaultCatatan} placeholder="Catatan utama meeting" />
-                </label>
-                <label>
-                  <span>Catatan Tambahan</span>
-                  <textarea name="catatanTambahan" rows={3} defaultValue={defaultCatatanTambahan} placeholder="Catatan tambahan" />
-                </label>
-              </div>
-
               <div className="formActions">
-                <button type="submit" className="primaryButton" disabled={isSavingForm}>
+                <button
+                  type="submit"
+                  className="primaryButton"
+                  disabled={isSavingForm}
+                >
                   {isSavingForm ? "Menyimpan..." : "Simpan"}
                 </button>
-                {saveState.message ? <span className="muted small">{saveState.message}</span> : null}
+                {saveState.message ? (
+                  <span className="muted small">{saveState.message}</span>
+                ) : null}
               </div>
             </form>
           </div>
@@ -573,7 +651,9 @@ export default function MeetingDetailClient({
               <div className="emptyState">
                 <div className="emptyIcon">👥</div>
                 <h3>Belum ada presensi</h3>
-                <p>Data peserta akan muncul otomatis setelah absensi berhasil.</p>
+                <p>
+                  Data peserta akan muncul otomatis setelah absensi berhasil.
+                </p>
               </div>
             ) : (
               <div className="presenceList">
@@ -595,7 +675,13 @@ export default function MeetingDetailClient({
                         `${name}-${index}`
                       }
                     >
-                      <div className={faceSrc ? "presenceAvatar presencePhotoAvatar" : "presenceAvatar"}>
+                      <div
+                        className={
+                          faceSrc
+                            ? "presenceAvatar presencePhotoAvatar"
+                            : "presenceAvatar"
+                        }
+                      >
                         {faceSrc ? (
                           <img src={faceSrc} alt={`Preview wajah ${name}`} />
                         ) : (

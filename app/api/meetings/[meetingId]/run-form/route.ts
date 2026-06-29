@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireMeetingReadRequest } from "@/lib/auth/read-session";
 import { saveMeetingRunForm } from "@/lib/firebase/db";
+import type { MeetingRunForm } from "@/lib/firebase/schema";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,6 +20,10 @@ function numberOrNull(value: unknown) {
   return Number.isFinite(numberValue) ? numberValue : null;
 }
 
+function hasOwn(body: Record<string, unknown>, key: string) {
+  return Object.prototype.hasOwnProperty.call(body, key);
+}
+
 export async function PATCH(request: NextRequest, context: RouteContext) {
   try {
     await requireMeetingReadRequest(request);
@@ -30,18 +35,21 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ success: false, message: "meetingId wajib diisi." }, { status: 400 });
     }
 
-    const meeting = await saveMeetingRunForm(meetingId, {
-      agendaRapat: stringValue(body.agendaRapat),
-      pembahasan: stringValue(body.pembahasan),
-      hasilRapat: stringValue(body.hasilRapat),
-      catatan: stringValue(body.catatan),
-      catatanTambahan: stringValue(body.catatanTambahan),
-      tindakLanjut: stringValue(body.tindakLanjut),
-      pemimpinRapat: stringValue(body.pemimpinRapat),
-      notulis: stringValue(body.notulis),
+    const payload: MeetingRunForm = {
       status: stringValue(body.status) === "closed" ? "closed" : "active",
       finishedAt: numberOrNull(body.finishedAt),
-    });
+    };
+
+    if (hasOwn(body, "agendaRapat")) payload.agendaRapat = stringValue(body.agendaRapat);
+    if (hasOwn(body, "pembahasan")) payload.pembahasan = stringValue(body.pembahasan);
+    if (hasOwn(body, "hasilRapat")) payload.hasilRapat = stringValue(body.hasilRapat);
+    if (hasOwn(body, "catatan")) payload.catatan = stringValue(body.catatan);
+    if (hasOwn(body, "catatanTambahan")) payload.catatanTambahan = stringValue(body.catatanTambahan);
+    if (hasOwn(body, "tindakLanjut")) payload.tindakLanjut = stringValue(body.tindakLanjut);
+    if (hasOwn(body, "pemimpinRapat")) payload.pemimpinRapat = stringValue(body.pemimpinRapat);
+    if (hasOwn(body, "notulis")) payload.notulis = stringValue(body.notulis);
+
+    const meeting = await saveMeetingRunForm(meetingId, payload);
 
     return NextResponse.json({ success: true, meeting });
   } catch (error) {

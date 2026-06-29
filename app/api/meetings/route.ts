@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminRequest } from "@/lib/auth/admin-session";
 import { requireMeetingReadRequest } from "@/lib/auth/read-session";
-import { createMeetingDirect, getMeetings } from "@/lib/firebase/db";
+import { createMeetingDirect, getMeetings, setMeetingImageMeta } from "@/lib/firebase/db";
 import { getMeetingDateKey, isValidDateKey, todayDateKey } from "@/lib/utils/date";
+import { deletePublicMeetingImage, saveCompressedMeetingImage, validateMeetingImageFile } from "@/lib/utils/meeting-image";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,6 +15,28 @@ function stringValue(value: unknown) {
 function stringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return value.map((item) => stringValue(item)).filter(Boolean);
+}
+
+function formFile(formData: FormData, key: string) {
+  const value = formData.get(key);
+  return value instanceof File && value.size > 0 ? value : null;
+}
+
+async function readMeetingPayload(request: NextRequest) {
+  const contentType = request.headers.get("content-type") || "";
+
+  if (contentType.includes("multipart/form-data")) {
+    const formData = await request.formData();
+    const body: Record<string, unknown> = Object.fromEntries(formData.entries());
+    body.prodiIds = formData.getAll("prodiIds").map((item) => stringValue(item)).filter(Boolean);
+    body.prodiNames = formData.getAll("prodiNames").map((item) => stringValue(item)).filter(Boolean);
+    const imageFile = formFile(formData, "meetingImage");
+    validateMeetingImageFile(imageFile);
+    return { body, imageFile };
+  }
+
+  const body = (await request.json()) as Record<string, unknown>;
+  return { body, imageFile: null as File | null };
 }
 
 export async function GET(request: NextRequest) {
@@ -33,6 +56,12 @@ export async function GET(request: NextRequest) {
         meetingId: meeting.meetingId,
         meetingName: meeting.meetingName,
         noDokumen: meeting.noDokumen || "",
+        meetingImageUrl: meeting.meetingImageUrl || "",
+        meetingImagePath: meeting.meetingImagePath || "",
+        meetingImageFileName: meeting.meetingImageFileName || "",
+        meetingImageMimeType: meeting.meetingImageMimeType || "",
+        meetingImageSize: meeting.meetingImageSize || 0,
+        meetingImageUpdatedAt: meeting.meetingImageUpdatedAt || 0,
         tanggal: meeting.tanggal || "",
         hari: meeting.hari || "",
         tempat: meeting.tempat || "",
@@ -57,8 +86,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     await requireAdminRequest(request);
-    const body = (await request.json()) as Record<string, unknown>;
-    const meeting = await createMeetingDirect({
+    const { body, imageFile } = await readMeetingPayload(request);
+    let meeting = await createMeetingDirect({
       meetingName: stringValue(body.meetingName),
       noDokumen: stringValue(body.noDokumen),
       topikRapat: stringValue(body.topikRapat),
@@ -75,6 +104,18 @@ export async function POST(request: NextRequest) {
       catatan: stringValue(body.catatan),
       sourceInvitationFormId: stringValue(body.sourceInvitationFormId),
     });
+
+    if (imageFile) {
+      const savedImage = await saveCompressedMeetingImage(imageFile, meeting.meetingId);
+      if (savedImage) {
+        try {
+          meeting = await setMeetingImageMeta(meeting.meetingId, savedImage);
+        } catch (error) {
+          await deletePublicMeetingImage(savedImage.meetingImagePath);
+          throw error;
+        }
+      }
+    }
 
     return NextResponse.json({ success: true, meeting }, { status: 201 });
   } catch (error) {
