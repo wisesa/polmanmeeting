@@ -6,6 +6,7 @@ import {
 } from "@/lib/auth/dosen-session";
 import { getRegisteredFaces } from "@/lib/firebase/db";
 import { matchFaceDescriptorDistance, sanitizeFaceRecord } from "@/lib/face/matcher";
+import { getFaceMinDistanceGap, getStrictFaceDistanceThreshold } from "@/lib/face/strict-threshold";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,6 +19,10 @@ function numberArray(value: unknown): number[] {
 function rounded(value: number) {
   if (!Number.isFinite(value)) return value;
   return Number(value.toFixed(6));
+}
+
+function roundedOptional(value?: number) {
+  return value === undefined ? undefined : rounded(value);
 }
 
 function faceKey(face: Record<string, unknown>) {
@@ -37,8 +42,14 @@ export async function POST(request: NextRequest) {
     }
 
     const faces = await getRegisteredFaces();
-    const threshold = Number(process.env.FACE_API_DISTANCE_THRESHOLD ?? "0.6");
-    const match = matchFaceDescriptorDistance(descriptor, faces, { threshold, descriptorSize: 128, topK: 5 });
+    const threshold = getStrictFaceDistanceThreshold("FACE_API_LOGIN_DISTANCE_THRESHOLD");
+    const minDistanceGap = getFaceMinDistanceGap("FACE_API_LOGIN_MIN_DISTANCE_GAP");
+    const match = matchFaceDescriptorDistance(descriptor, faces, {
+      threshold,
+      minDistanceGap,
+      descriptorSize: 128,
+      topK: 5,
+    });
 
     if (!match.bestMatch) {
       return NextResponse.json(
@@ -48,19 +59,29 @@ export async function POST(request: NextRequest) {
           message: "Belum ada data wajah dosen yang tersimpan.",
           comparedCount: match.comparedCount,
           threshold,
+          minDistanceGap,
         },
         { status: 401 }
       );
     }
 
     if (!match.matched) {
+      const isAmbiguous = match.rejectionReason === "ambiguous_match";
+
       return NextResponse.json(
         {
           success: false,
           matched: false,
-          message: "Wajah tidak dikenali sebagai dosen terdaftar.",
+          message: isAmbiguous
+            ? "Wajah belum bisa dipastikan sebagai satu dosen tertentu karena hasil terdekat terlalu dekat dengan data wajah lain. Silakan ambil ulang foto atau daftar ulang wajah."
+            : "Wajah tidak dikenali sebagai dosen terdaftar.",
           distance: rounded(match.distance),
+          secondDistance: roundedOptional(match.secondDistance),
+          distanceGap: roundedOptional(match.distanceGap),
           threshold,
+          minDistanceGap,
+          ambiguous: match.ambiguous,
+          rejectionReason: match.rejectionReason,
           comparedCount: match.comparedCount,
         },
         { status: 401 }
@@ -87,8 +108,11 @@ export async function POST(request: NextRequest) {
       name: matchedFace.name,
       nameKey: matchedFace.nameKey,
       distance: rounded(match.distance),
+      secondDistance: roundedOptional(match.secondDistance),
+      distanceGap: roundedOptional(match.distanceGap),
       score: rounded(score),
       threshold,
+      minDistanceGap,
       rememberUntilLogout: true,
     });
 

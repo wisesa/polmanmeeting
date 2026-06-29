@@ -21,8 +21,13 @@ type LoginResponse = {
   name?: string;
   nameKey?: string;
   distance?: number;
+  secondDistance?: number;
+  distanceGap?: number;
   score?: number;
   threshold?: number;
+  minDistanceGap?: number;
+  ambiguous?: boolean;
+  rejectionReason?: string;
 };
 
 let faceApiPromise: Promise<FaceApiModule> | null = null;

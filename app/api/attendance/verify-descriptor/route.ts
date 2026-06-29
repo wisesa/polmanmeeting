@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireMeetingReadRequest } from "@/lib/auth/read-session";
 import { getMeeting, getRegisteredFaces, upsertPresence } from "@/lib/firebase/db";
 import { matchFaceDescriptorDistance, sanitizeFaceRecord, type FaceCandidate, type FaceRecord } from "@/lib/face/matcher";
+import { getFaceMinDistanceGap, getStrictFaceDistanceThreshold } from "@/lib/face/strict-threshold";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -60,6 +61,10 @@ function formatCandidate(candidate: FaceCandidate) {
   };
 }
 
+function roundedOptional(value?: number) {
+  return value === undefined ? undefined : rounded(value);
+}
+
 export async function POST(request: NextRequest) {
   try {
     const session = await requireMeetingReadRequest(request);
@@ -85,8 +90,14 @@ export async function POST(request: NextRequest) {
     }
 
     const faces = await getRegisteredFaces();
-    const threshold = Number(process.env.FACE_API_DISTANCE_THRESHOLD ?? "0.6");
-    const match = matchFaceDescriptorDistance(descriptor, faces, { threshold, descriptorSize: 128, topK: 5 });
+    const threshold = getStrictFaceDistanceThreshold("FACE_API_ATTENDANCE_DISTANCE_THRESHOLD");
+    const minDistanceGap = getFaceMinDistanceGap("FACE_API_ATTENDANCE_MIN_DISTANCE_GAP");
+    const match = matchFaceDescriptorDistance(descriptor, faces, {
+      threshold,
+      minDistanceGap,
+      descriptorSize: 128,
+      topK: 5,
+    });
 
     if (!match.bestMatch) {
       return NextResponse.json({
@@ -94,18 +105,28 @@ export async function POST(request: NextRequest) {
         matched: false,
         message: "Belum ada data wajah yang tersimpan untuk dibandingkan.",
         threshold,
+        minDistanceGap,
         comparedCount: match.comparedCount,
         candidates: match.candidates.map(formatCandidate),
       });
     }
 
     if (!match.matched) {
+      const isAmbiguous = match.rejectionReason === "ambiguous_match";
+
       return NextResponse.json({
         success: false,
         matched: false,
-        message: "Wajah belum dikenali.",
+        message: isAmbiguous
+          ? "Wajah belum bisa dipastikan. Hasil terdekat terlalu dekat dengan data wajah lain. Silakan ambil ulang foto atau daftar ulang wajah dengan foto yang lebih jelas."
+          : "Wajah belum dikenali.",
         distance: rounded(match.distance),
+        secondDistance: roundedOptional(match.secondDistance),
+        distanceGap: roundedOptional(match.distanceGap),
         threshold,
+        minDistanceGap,
+        ambiguous: match.ambiguous,
+        rejectionReason: match.rejectionReason,
         comparedCount: match.comparedCount,
         candidates: match.candidates.map(formatCandidate),
       });
@@ -145,8 +166,11 @@ export async function POST(request: NextRequest) {
       name,
       nameKey,
       distance: rounded(match.distance),
+      secondDistance: roundedOptional(match.secondDistance),
+      distanceGap: roundedOptional(match.distanceGap),
       score: rounded(score),
       threshold,
+      minDistanceGap,
       face: sanitizeFaceRecord(matchedFace),
       candidates: match.candidates.map(formatCandidate),
     });

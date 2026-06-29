@@ -15,7 +15,12 @@ type VerifyResponse = {
   nameKey?: string;
   score?: number;
   distance?: number;
+  secondDistance?: number;
+  distanceGap?: number;
   threshold?: number;
+  minDistanceGap?: number;
+  ambiguous?: boolean;
+  rejectionReason?: string;
 };
 
 type CameraAttendanceProps = {

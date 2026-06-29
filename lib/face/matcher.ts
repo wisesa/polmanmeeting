@@ -16,8 +16,13 @@ export type FaceCandidate = {
 
 export type FaceDistanceMatchResult = {
   matched: boolean;
+  ambiguous: boolean;
   threshold: number;
+  minDistanceGap: number;
   distance: number;
+  secondDistance?: number;
+  distanceGap?: number;
+  rejectionReason?: "distance_above_threshold" | "ambiguous_match";
   comparedCount: number;
   bestMatch: FaceRecord | null;
   candidates: FaceCandidate[];
@@ -257,6 +262,7 @@ export function matchFaceDescriptorDistance(
   rawFaces: unknown,
   options: {
     threshold?: number;
+    minDistanceGap?: number;
     topK?: number;
     descriptorSize?: number;
   } = {}
@@ -264,6 +270,7 @@ export function matchFaceDescriptorDistance(
   const threshold = Number(
     options.threshold ?? process.env.FACE_API_DISTANCE_THRESHOLD ?? "0.6"
   );
+  const minDistanceGap = Number(options.minDistanceGap ?? process.env.FACE_API_MIN_DISTANCE_GAP ?? "0");
 
   const topK = options.topK ?? 5;
   const descriptorSize = options.descriptorSize ?? 128;
@@ -310,11 +317,38 @@ export function matchFaceDescriptorDistance(
   );
 
   const best = candidates[0] ?? null;
+  const second = candidates[1] ?? null;
+  const bestDistance = best?.distance ?? Number.POSITIVE_INFINITY;
+  const secondDistance = second?.distance;
+  const distanceGap =
+    typeof secondDistance === "number" && Number.isFinite(secondDistance)
+      ? secondDistance - bestDistance
+      : undefined;
+  const withinThreshold = Boolean(best && bestDistance <= threshold);
+  const ambiguous = Boolean(
+    withinThreshold &&
+      typeof distanceGap === "number" &&
+      Number.isFinite(distanceGap) &&
+      Number.isFinite(minDistanceGap) &&
+      minDistanceGap > 0 &&
+      distanceGap < minDistanceGap
+  );
+  const matched = withinThreshold && !ambiguous;
+  const rejectionReason = matched
+    ? undefined
+    : ambiguous
+      ? "ambiguous_match"
+      : "distance_above_threshold";
 
   return {
-    matched: Boolean(best && (best.distance ?? Number.POSITIVE_INFINITY) <= threshold),
+    matched,
+    ambiguous,
     threshold,
-    distance: best?.distance ?? Number.POSITIVE_INFINITY,
+    minDistanceGap,
+    distance: bestDistance,
+    secondDistance,
+    distanceGap,
+    rejectionReason,
     comparedCount: candidates.length,
     bestMatch: best ? best.rawFace : null,
     candidates: candidates.slice(0, topK).map((candidate) => ({
