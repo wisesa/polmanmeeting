@@ -1,7 +1,7 @@
 import "server-only";
 
 import type { CollectionReference, Query } from "firebase-admin/firestore";
-import { firestoreDb, increment, serverTimestamp, Timestamp } from "./admin";
+import { FieldValue, firestoreDb, increment, serverTimestamp, Timestamp } from "./admin";
 import { asBool, asNumber, asString, makeSafeDocId, millisNow } from "@/lib/utils/id";
 import type { MasterProdi, Meeting, MeetingInfoForm, MeetingRunForm, Presence, RegisteredFace } from "./schema";
 
@@ -1061,6 +1061,47 @@ export async function deleteMeeting(meetingId: string): Promise<void> {
   const meetingRef = firestoreDb().collection("meetings").doc(cleanMeetingId);
   await deleteSubcollection(meetingRef.collection("presences"));
   await meetingRef.delete();
+}
+
+export async function deleteMeetingPresence(meetingId: string, presenceId: string): Promise<{ participantsCount: number }> {
+  const cleanMeetingId = cleanString(meetingId);
+  const cleanPresenceId = makeSafeDocId(cleanString(presenceId));
+
+  if (!cleanMeetingId) throw new Error("meetingId wajib diisi.");
+  if (!cleanPresenceId) throw new Error("presenceId wajib diisi.");
+
+  const db = firestoreDb();
+  const meetingRef = db.collection("meetings").doc(cleanMeetingId);
+  const presenceRef = meetingRef.collection("presences").doc(cleanPresenceId);
+  const now = millisNow();
+
+  return db.runTransaction(async (transaction) => {
+    const [meetingSnap, presenceSnap] = await Promise.all([
+      transaction.get(meetingRef),
+      transaction.get(presenceRef),
+    ]);
+
+    if (!meetingSnap.exists) throw new Error("Meeting tidak ditemukan.");
+    if (!presenceSnap.exists) throw new Error("Presensi peserta tidak ditemukan.");
+
+    const meetingRaw = mapFromSnapshot(meetingSnap.data());
+    const currentCount = asNumber(meetingRaw.participantsCount, 1);
+    const participantsCount = Math.max(0, currentCount - 1);
+
+    transaction.delete(presenceRef);
+    transaction.set(
+      meetingRef,
+      cleanFirestoreData({
+        participantsCount,
+        presences: { [cleanPresenceId]: FieldValue.delete() },
+        updatedAt: now,
+        syncedAt: serverTimestamp(),
+      }),
+      { merge: true }
+    );
+
+    return { participantsCount };
+  });
 }
 
 export async function saveMeetingRunForm(meetingId: string, params: MeetingRunForm): Promise<Meeting> {

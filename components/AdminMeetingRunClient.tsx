@@ -230,7 +230,7 @@ export default function AdminMeetingRunClient({ meeting, faceOptions }: AdminMee
         </form>
 
         <div className="adminMeetingPresenceBlock">
-          <PresenceListLive meetingId={activeMeeting.meetingId} />
+          <PresenceListLive meetingId={activeMeeting.meetingId} allowDelete />
         </div>
 
       </section>

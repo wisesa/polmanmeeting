@@ -787,6 +787,14 @@ button[disabled] { opacity: .55; cursor: not-allowed; }
 
 .presenceInfo {
   min-width: 0;
+  flex: 1 1 auto;
+}
+
+.presenceAdminActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex: 0 0 auto;
 }
 
 .presenceInfo h3 {

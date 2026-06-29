@@ -36,6 +36,7 @@ type PresenceListLiveProps = {
   meetingId: string;
   initialPresences?: Presence[];
   intervalMs?: number;
+  allowDelete?: boolean;
 };
 
 function normalizePresences(value: MeetingResponse["presences"]): Presence[] {
@@ -104,9 +105,11 @@ export default function PresenceListLive({
   meetingId,
   initialPresences = [],
   intervalMs = 3000,
+  allowDelete = false,
 }: PresenceListLiveProps) {
   const [presences, setPresences] = useState<Presence[]>(initialPresences);
   const [loading, setLoading] = useState(initialPresences.length === 0);
+  const [deletingId, setDeletingId] = useState("");
   const [error, setError] = useState("");
   const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
   const toast = useToast();
@@ -161,6 +164,43 @@ export default function PresenceListLive({
       setLoading(false);
     }
   }, [meetingId]);
+
+  async function deletePresence(presence: Presence) {
+    const presenceId = presence.nameKey || presence.id || presence.key || presence.faceId || presence.name || "";
+
+    if (!presenceId) {
+      toast.error("Gagal", "ID presensi peserta tidak ditemukan.");
+      return;
+    }
+
+    const name = presence.name || "peserta ini";
+    if (!window.confirm(`Hapus presensi ${name} dari meeting ini?`)) return;
+
+    try {
+      setDeletingId(presenceId);
+      const response = await fetch(
+        `/api/meetings/${encodeURIComponent(meetingId)}/presences/${encodeURIComponent(presenceId)}`,
+        { method: "DELETE" }
+      );
+
+      const data = (await response.json()) as MeetingResponse;
+
+      if (!response.ok || data.success === false) {
+        throw new Error(data.message || "Presensi peserta gagal dihapus.");
+      }
+
+      setPresences(normalizePresences(data.presences));
+      setLastUpdatedAt(Date.now());
+      toast.success("Berhasil", `Presensi ${name} berhasil dihapus.`);
+    } catch (err) {
+      toast.error(
+        "Gagal",
+        err instanceof Error ? err.message : "Presensi peserta gagal dihapus."
+      );
+    } finally {
+      setDeletingId("");
+    }
+  }
 
   useEffect(() => {
     loadPresences();
@@ -248,6 +288,19 @@ export default function PresenceListLive({
                   <span>Kecocokan {formatScore(presence.lastScore || presence.score)}</span>
                 </div>
               </div>
+
+              {allowDelete ? (
+                <div className="presenceAdminActions">
+                  <button
+                    type="button"
+                    className="dangerButton small"
+                    onClick={() => deletePresence(presence)}
+                    disabled={deletingId === (presence.nameKey || presence.id || presence.key || presence.faceId || presence.name)}
+                  >
+                    {deletingId === (presence.nameKey || presence.id || presence.key || presence.faceId || presence.name) ? "Menghapus..." : "Hapus Presensi"}
+                  </button>
+                </div>
+              ) : null}
             </article>
           ))}
         </div>
