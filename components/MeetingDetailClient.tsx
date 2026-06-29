@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import {
+  ChangeEvent,
   FormEvent,
   useCallback,
   useEffect,
@@ -251,6 +252,17 @@ export default function MeetingDetailClient({
     message: "",
   });
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const [removeMeetingImage, setRemoveMeetingImage] = useState(false);
+  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
+  const [selectedImageName, setSelectedImageName] = useState("");
+  const [selectedImagePreviewUrl, setSelectedImagePreviewUrl] = useState("");
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [isCameraStarting, setIsCameraStarting] = useState(false);
+  const [cameraError, setCameraError] = useState("");
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const cameraStreamRef = useRef<MediaStream | null>(null);
   const toast = useToast();
   const lastErrorToastRef = useRef("");
 
@@ -272,7 +284,156 @@ export default function MeetingDetailClient({
     }
   }, [saveState.message, saveState.status, toast]);
 
+  useEffect(() => {
+    return () => {
+      stopCamera();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!selectedImagePreviewUrl) return;
+    return () => URL.revokeObjectURL(selectedImagePreviewUrl);
+  }, [selectedImagePreviewUrl]);
+
   const sortedPresences = useMemo(() => sortPresences(presences), [presences]);
+
+  function stopCamera() {
+    cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
+    cameraStreamRef.current = null;
+    if (videoRef.current) videoRef.current.srcObject = null;
+    setIsCameraOpen(false);
+    setIsCameraStarting(false);
+  }
+
+  function setMeetingImageFile(file: File | null) {
+    if (selectedImagePreviewUrl) URL.revokeObjectURL(selectedImagePreviewUrl);
+
+    setSelectedImageFile(file);
+    setSelectedImageName(file?.name || "");
+    setSelectedImagePreviewUrl(file ? URL.createObjectURL(file) : "");
+
+    if (fileInputRef.current) {
+      if (file) {
+        const transfer = new DataTransfer();
+        transfer.items.add(file);
+        fileInputRef.current.files = transfer.files;
+      } else {
+        fileInputRef.current.value = "";
+      }
+    }
+
+    if (file) setRemoveMeetingImage(false);
+  }
+
+  function handleMeetingImageChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0] || null;
+    setMeetingImageFile(file);
+  }
+
+  async function openCamera() {
+    try {
+      stopCamera();
+      setCameraError("");
+      setIsCameraStarting(true);
+
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error("Browser tidak mendukung akses kamera langsung.");
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: "environment" },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+        audio: false,
+      });
+
+      cameraStreamRef.current = stream;
+      setIsCameraOpen(true);
+      setIsCameraStarting(false);
+
+      requestAnimationFrame(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          void videoRef.current.play();
+        }
+      });
+    } catch (error) {
+      stopCamera();
+      setCameraError(
+        error instanceof Error
+          ? error.message
+          : "Kamera tidak dapat dibuka. Periksa izin kamera browser.",
+      );
+    }
+  }
+
+  async function captureMeetingImage() {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+
+    if (!video || !canvas || video.readyState < 2) {
+      setCameraError("Kamera belum siap. Coba tekan Ambil Foto sekali lagi.");
+      return;
+    }
+
+    const width = video.videoWidth || 1280;
+    const height = video.videoHeight || 720;
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext("2d");
+
+    if (!context) {
+      setCameraError("Gagal mengambil gambar dari kamera.");
+      return;
+    }
+
+    context.drawImage(video, 0, 0, width, height);
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, "image/jpeg", 0.9),
+    );
+
+    if (!blob) {
+      setCameraError("Gagal membuat file gambar dari kamera.");
+      return;
+    }
+
+    const file = new File([blob], `kamera-meeting-${Date.now()}.jpg`, {
+      type: "image/jpeg",
+    });
+    setMeetingImageFile(file);
+    stopCamera();
+  }
+
+  async function syncMeetingImageIfNeeded(currentMeeting: AnyRecord | null) {
+    if (!selectedImageFile && !removeMeetingImage) return currentMeeting;
+
+    const formData = new FormData();
+    if (selectedImageFile) formData.set("meetingImage", selectedImageFile);
+    if (removeMeetingImage && !selectedImageFile) {
+      formData.set("deleteMeetingImage", "1");
+    }
+
+    const response = await fetch(
+      `/api/meetings/${encodeURIComponent(meetingId)}`,
+      { method: "PATCH", body: formData },
+    );
+    const data = (await response.json()) as {
+      success?: boolean;
+      message?: string;
+      meeting?: AnyRecord | null;
+    };
+
+    if (!response.ok || data.success === false) {
+      throw new Error(data.message || "Gambar meeting gagal disimpan.");
+    }
+
+    setRemoveMeetingImage(false);
+    setMeetingImageFile(null);
+    stopCamera();
+    return data.meeting ?? currentMeeting;
+  }
 
   const loadData = useCallback(
     async (silent = false) => {
@@ -338,6 +499,7 @@ export default function MeetingDetailClient({
           body: JSON.stringify({
             agendaRapat: getFormString(formData, "agendaRapat"),
             hasilRapat: getFormString(formData, "hasilRapat"),
+            catatan: getFormString(formData, "catatan"),
             tindakLanjut: getFormString(formData, "tindakLanjut"),
             pemimpinRapat: getFormString(formData, "pemimpinRapat"),
             notulis: getFormString(formData, "notulis"),
@@ -359,16 +521,23 @@ export default function MeetingDetailClient({
         throw new Error(data.message || "Notulen gagal disimpan.");
       }
 
-      if (data.meeting) {
-        setMeeting(data.meeting);
+      const updatedMeeting = await syncMeetingImageIfNeeded(
+        data.meeting ?? meeting,
+      );
+
+      if (updatedMeeting) {
+        setMeeting(updatedMeeting);
         setLastUpdated(
-          new Date(numberValue(data.meeting.updatedAt, Date.now())),
+          new Date(numberValue(updatedMeeting.updatedAt, Date.now())),
         );
       }
 
       setSaveState({
         status: "success",
-        message: "Notulen berhasil diperbarui.",
+        message:
+          selectedImageFile || removeMeetingImage
+            ? "Notulen dan gambar meeting berhasil diperbarui."
+            : "Notulen berhasil diperbarui.",
       });
     } catch (error) {
       setSaveState({
@@ -416,6 +585,7 @@ export default function MeetingDetailClient({
   const isSavingForm = saveState.status === "saving";
   const defaultAgendaRapat = getMeetingFormValue(meeting, "agendaRapat");
   const defaultHasilRapat = getMeetingFormValue(meeting, "hasilRapat");
+  const defaultCatatan = getMeetingFormValue(meeting, "catatan");
   const defaultTindakLanjut = getMeetingFormValue(meeting, "tindakLanjut");
   const defaultPemimpinRapat = getMeetingFormValue(meeting, "pemimpinRapat");
   const defaultNotulis = getMeetingFormValue(meeting, "notulis");
@@ -564,6 +734,109 @@ export default function MeetingDetailClient({
               className="modernForm meetingEditForm"
               onSubmit={handleMeetingFormSubmit}
             >
+              <div className="meetingImageField formLikeField">
+                <span>Gambar Meeting</span>
+                {meetingImageUrl && !removeMeetingImage ? (
+                  <div className="meetingImagePreviewBox">
+                    <img
+                      src={meetingImageUrl}
+                      alt={`Gambar meeting ${title}`}
+                    />
+                    <button
+                      type="button"
+                      className="dangerButton small"
+                      onClick={() => setRemoveMeetingImage(true)}
+                    >
+                      Hapus gambar lama
+                    </button>
+                  </div>
+                ) : null}
+                {meetingImageUrl && removeMeetingImage ? (
+                  <div className="inlineAlert warning">
+                    Gambar lama akan dihapus saat form meeting disimpan.
+                    <button
+                      type="button"
+                      className="ghostButton small"
+                      onClick={() => setRemoveMeetingImage(false)}
+                    >
+                      Batal hapus
+                    </button>
+                  </div>
+                ) : null}
+                {selectedImagePreviewUrl ? (
+                  <div className="meetingImagePreviewBox newImagePreviewBox">
+                    <img
+                      src={selectedImagePreviewUrl}
+                      alt="Preview gambar meeting baru"
+                    />
+                    <span className="muted small">
+                      Gambar baru siap disimpan: {selectedImageName}
+                    </span>
+                    <button
+                      type="button"
+                      className="ghostButton small"
+                      onClick={() => setMeetingImageFile(null)}
+                    >
+                      Batalkan gambar baru
+                    </button>
+                  </div>
+                ) : null}
+                <div className="meetingImageSourceActions">
+                  <label className="ghostButton small filePickButton">
+                    Ambil dari File
+                    <input
+                      ref={fileInputRef}
+                      name="meetingImage"
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={handleMeetingImageChange}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    className="ghostButton small"
+                    onClick={openCamera}
+                    disabled={isCameraStarting}
+                  >
+                    {isCameraStarting
+                      ? "Membuka Kamera..."
+                      : "Ambil dari Kamera"}
+                  </button>
+                </div>
+                {isCameraOpen ? (
+                  <div className="meetingCameraBox">
+                    <video ref={videoRef} playsInline muted />
+                    <canvas ref={canvasRef} className="hiddenCanvas" />
+                    <div className="meetingImageSourceActions">
+                      <button
+                        type="button"
+                        className="primaryButton small"
+                        onClick={captureMeetingImage}
+                      >
+                        Ambil Foto
+                      </button>
+                      <button
+                        type="button"
+                        className="ghostButton small"
+                        onClick={stopCamera}
+                      >
+                        Tutup Kamera
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <canvas ref={canvasRef} className="hiddenCanvas" />
+                )}
+                {cameraError ? (
+                  <span className="muted small warningText">{cameraError}</span>
+                ) : null}
+                <span className="muted small">
+                  Gambar dapat diambil dari file atau kamera. Sistem akan
+                  menyimpan hasil kompres sekitar 200 KB di folder
+                  public/uploads/meetings.
+                </span>
+              </div>
+
               <div className="formGrid two">
                 <label>
                   <span>Pemimpin Rapat</span>
@@ -600,6 +873,16 @@ export default function MeetingDetailClient({
                   rows={4}
                   defaultValue={defaultHasilRapat}
                   placeholder="Tuliskan keputusan atau kesepakatan"
+                />
+              </label>
+
+              <label>
+                <span>Catatan</span>
+                <textarea
+                  name="catatan"
+                  rows={3}
+                  defaultValue={defaultCatatan}
+                  placeholder="Catatan tambahan selama meeting"
                 />
               </label>
 

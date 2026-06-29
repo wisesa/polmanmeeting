@@ -1,8 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminRequest } from "@/lib/auth/admin-session";
 import { requireMeetingReadRequest } from "@/lib/auth/read-session";
-import { deleteMeeting, getMeeting, getPresenceList, setMeetingImageMeta, updateMeetingDirect } from "@/lib/firebase/db";
-import { deletePublicMeetingImage, saveCompressedMeetingImage, validateMeetingImageFile } from "@/lib/utils/meeting-image";
+import {
+  deleteMeeting,
+  getMeeting,
+  getPresenceList,
+  setMeetingImageMeta,
+  updateMeetingDirect,
+} from "@/lib/firebase/db";
+import {
+  deletePublicMeetingImage,
+  saveCompressedMeetingImage,
+  validateMeetingImageFile,
+} from "@/lib/utils/meeting-image";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,7 +34,9 @@ function stringArray(value: unknown): string[] {
 function boolValue(value: unknown) {
   if (typeof value === "boolean") return value;
   if (typeof value !== "string") return false;
-  return ["1", "true", "yes", "on", "hapus"].includes(value.trim().toLowerCase());
+  return ["1", "true", "yes", "on", "hapus"].includes(
+    value.trim().toLowerCase(),
+  );
 }
 
 function hasOwn(body: Record<string, unknown>, key: string) {
@@ -56,12 +68,20 @@ async function readMeetingPayload(request: NextRequest) {
 
   if (contentType.includes("multipart/form-data")) {
     const formData = await request.formData();
-    const body: Record<string, unknown> = Object.fromEntries(formData.entries());
+    const body: Record<string, unknown> = Object.fromEntries(
+      formData.entries(),
+    );
     if (formData.has("prodiIds")) {
-      body.prodiIds = formData.getAll("prodiIds").map((item) => stringValue(item)).filter(Boolean);
+      body.prodiIds = formData
+        .getAll("prodiIds")
+        .map((item) => stringValue(item))
+        .filter(Boolean);
     }
     if (formData.has("prodiNames")) {
-      body.prodiNames = formData.getAll("prodiNames").map((item) => stringValue(item)).filter(Boolean);
+      body.prodiNames = formData
+        .getAll("prodiNames")
+        .map((item) => stringValue(item))
+        .filter(Boolean);
     }
     if (formData.has("deleteMeetingImage")) {
       body.deleteMeetingImage = formData.get("deleteMeetingImage");
@@ -76,8 +96,13 @@ async function readMeetingPayload(request: NextRequest) {
 }
 
 function statusFromError(message: string) {
-  if (message.includes("Sesi admin")) return 401;
-  if (message.includes("tidak ditemukan") || message.includes("Tidak ditemukan")) return 404;
+  if (message.includes("Sesi admin") || message.includes("Sesi tidak valid"))
+    return 401;
+  if (
+    message.includes("tidak ditemukan") ||
+    message.includes("Tidak ditemukan")
+  )
+    return 404;
   return 400;
 }
 
@@ -92,13 +117,19 @@ export async function GET(request: NextRequest, context: RouteContext) {
     const meetingId = await readMeetingId(context);
 
     if (!meetingId) {
-      return NextResponse.json({ success: false, message: "meetingId wajib diisi." }, { status: 400 });
+      return NextResponse.json(
+        { success: false, message: "meetingId wajib diisi." },
+        { status: 400 },
+      );
     }
 
     const meeting = await getMeeting(meetingId);
 
     if (!meeting) {
-      return NextResponse.json({ success: false, message: "Meeting tidak ditemukan.", meetingId }, { status: 404 });
+      return NextResponse.json(
+        { success: false, message: "Meeting tidak ditemukan.", meetingId },
+        { status: 404 },
+      );
     }
 
     const presences = await getPresenceList(meetingId);
@@ -114,48 +145,104 @@ export async function GET(request: NextRequest, context: RouteContext) {
       },
       {
         headers: {
-          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+          "Cache-Control":
+            "no-store, no-cache, must-revalidate, proxy-revalidate",
           Pragma: "no-cache",
           Expires: "0",
         },
-      }
+      },
     );
   } catch (error) {
     console.error("[api/meetings/[meetingId]]", error);
     return NextResponse.json(
-      { success: false, message: error instanceof Error ? error.message : "Gagal memuat detail meeting." },
-      { status: error instanceof Error && error.message.includes("Sesi") ? 401 : 500 }
+      {
+        success: false,
+        message:
+          error instanceof Error
+            ? error.message
+            : "Gagal memuat detail meeting.",
+      },
+      {
+        status:
+          error instanceof Error && error.message.includes("Sesi") ? 401 : 500,
+      },
     );
   }
 }
 
 export async function PATCH(request: NextRequest, context: RouteContext) {
   try {
-    await requireAdminRequest(request);
+    const session = await requireMeetingReadRequest(request);
     const meetingId = await readMeetingId(context);
+
+    if (!meetingId) {
+      return NextResponse.json(
+        { success: false, message: "meetingId wajib diisi." },
+        { status: 400 },
+      );
+    }
+
     const { body, imageFile } = await readMeetingPayload(request);
     const deleteImage = boolValue(body.deleteMeetingImage);
-    const oldMeeting = imageFile || deleteImage ? await getMeeting(meetingId) : null;
+    const imageOnlyRequest = Boolean(imageFile || deleteImage);
+    const imageControlKeys = new Set(["meetingImage", "deleteMeetingImage"]);
+    const hasMeetingDataKeys = Object.keys(body).some(
+      (key) => !imageControlKeys.has(key),
+    );
 
-    let meeting = await updateMeetingDirect(meetingId, {
-      meetingName: optionalString(body, "meetingName"),
-      noDokumen: optionalString(body, "noDokumen"),
-      topikRapat: optionalString(body, "topikRapat"),
-      agendaRapat: optionalString(body, "agendaRapat"),
-      tanggalKey: firstOptionalString(body, ["tanggalKey", "meetingDateKey", "tanggal"]),
-      tempat: optionalString(body, "tempat"),
-      waktuMulai: optionalString(body, "waktuMulai"),
-      waktuSelesai: optionalString(body, "waktuSelesai"),
-      pemimpinRapat: optionalString(body, "pemimpinRapat"),
-      notulis: optionalString(body, "notulis"),
-      prodiIds: optionalStringArray(body, "prodiIds"),
-      prodiNames: optionalStringArray(body, "prodiNames"),
-      prodiText: optionalString(body, "prodiText"),
-      catatan: optionalString(body, "catatan"),
-      status: optionalString(body, "status"),
-    });
+    if (session.role !== "admin") {
+      const invalidKeys = Object.keys(body).filter(
+        (key) => !imageControlKeys.has(key),
+      );
 
-    const oldImagePath = oldMeeting?.meetingImagePath || oldMeeting?.meetingImageUrl || "";
+      if (invalidKeys.length > 0 || !imageOnlyRequest) {
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              "Akun dosen hanya dapat memperbarui gambar meeting dari halaman form meeting.",
+          },
+          { status: 403 },
+        );
+      }
+    }
+
+    const oldMeeting = imageOnlyRequest ? await getMeeting(meetingId) : null;
+
+    let meeting =
+      session.role === "admin" && hasMeetingDataKeys
+        ? await updateMeetingDirect(meetingId, {
+            meetingName: optionalString(body, "meetingName"),
+            noDokumen: optionalString(body, "noDokumen"),
+            topikRapat: optionalString(body, "topikRapat"),
+            agendaRapat: optionalString(body, "agendaRapat"),
+            tanggalKey: firstOptionalString(body, [
+              "tanggalKey",
+              "meetingDateKey",
+              "tanggal",
+            ]),
+            tempat: optionalString(body, "tempat"),
+            waktuMulai: optionalString(body, "waktuMulai"),
+            waktuSelesai: optionalString(body, "waktuSelesai"),
+            pemimpinRapat: optionalString(body, "pemimpinRapat"),
+            notulis: optionalString(body, "notulis"),
+            prodiIds: optionalStringArray(body, "prodiIds"),
+            prodiNames: optionalStringArray(body, "prodiNames"),
+            prodiText: optionalString(body, "prodiText"),
+            catatan: optionalString(body, "catatan"),
+            status: optionalString(body, "status"),
+          })
+        : oldMeeting || (await getMeeting(meetingId));
+
+    if (!meeting) {
+      return NextResponse.json(
+        { success: false, message: "Meeting tidak ditemukan." },
+        { status: 404 },
+      );
+    }
+
+    const oldImagePath =
+      oldMeeting?.meetingImagePath || oldMeeting?.meetingImageUrl || "";
 
     if (imageFile) {
       const savedImage = await saveCompressedMeetingImage(imageFile, meetingId);
@@ -177,8 +264,12 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
     return NextResponse.json({ success: true, meeting });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Meeting gagal diperbarui.";
-    return NextResponse.json({ success: false, message }, { status: statusFromError(message) });
+    const message =
+      error instanceof Error ? error.message : "Meeting gagal diperbarui.";
+    return NextResponse.json(
+      { success: false, message },
+      { status: statusFromError(message) },
+    );
   }
 }
 
@@ -187,14 +278,22 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     await requireAdminRequest(request);
     const meetingId = await readMeetingId(context);
     const meeting = await getMeeting(meetingId);
-    const imagePath = meeting?.meetingImagePath || meeting?.meetingImageUrl || "";
+    const imagePath =
+      meeting?.meetingImagePath || meeting?.meetingImageUrl || "";
 
     await deleteMeeting(meetingId);
     await deletePublicMeetingImage(imagePath);
 
-    return NextResponse.json({ success: true, message: "Meeting berhasil dihapus." });
+    return NextResponse.json({
+      success: true,
+      message: "Meeting berhasil dihapus.",
+    });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Meeting gagal dihapus.";
-    return NextResponse.json({ success: false, message }, { status: statusFromError(message) });
+    const message =
+      error instanceof Error ? error.message : "Meeting gagal dihapus.";
+    return NextResponse.json(
+      { success: false, message },
+      { status: statusFromError(message) },
+    );
   }
 }
