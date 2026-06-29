@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@vercel/blob": "^2.5.0",
+    "encoding": "^0.1.13",
     "face-api.js": "0.22.2",
     "firebase": "latest",
     "firebase-admin": "latest",
@@ -36,6 +37,6 @@
     "jose": "4.15.9"
   },
   "engines": {
-    "node": "20.x"
+    "node": "24.x"
   }
 }
