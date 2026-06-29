@@ -31,6 +31,7 @@ type CameraStatus =
   | "starting"
   | "ready"
   | "capturing"
+  | "paused"
   | "error";
 
 let faceApiPromise: Promise<FaceApiModule> | null = null;
@@ -168,6 +169,7 @@ export default function CameraAttendance({
     status === "capturing";
 
   const isCameraReady = status === "ready";
+  const isCameraPaused = status === "paused";
   useEffect(() => {
     if (!result) return;
 
@@ -334,7 +336,8 @@ export default function CameraAttendance({
 
       const snapshot = captureStillImageFromVideo(videoRef.current);
       setCapturedImageUrl(snapshot.imageUrl);
-      addDebug("Foto wajah berhasil diambil untuk proses absensi.");
+      stopCamera();
+      addDebug("Foto wajah berhasil diambil. Preview kamera dihentikan sementara proses absensi berjalan.");
 
       const faceapi = await loadFaceApiModels(addDebug);
       const descriptor = await readFaceDataFromStillImage(snapshot.canvas, faceapi);
@@ -358,7 +361,7 @@ export default function CameraAttendance({
       const normalizedData = normalizeVerifyResponse(data);
 
       setResult(normalizedData);
-      setStatus("ready");
+      setStatus("paused");
 
       if (normalizedData.success && onAttendanceSuccess) {
         await onAttendanceSuccess();
@@ -375,7 +378,8 @@ export default function CameraAttendance({
 
       addDebug(`ERROR attendance: ${message}`);
 
-      setStatus("ready");
+      stopCamera();
+      setStatus("paused");
       setResult({
         success: false,
         matched: false,
@@ -411,7 +415,7 @@ export default function CameraAttendance({
           )}
           <p className="muted">
             Buka kamera, posisikan wajah di area panduan, lalu tekan tombol
-            Ambil Absen.
+            Ambil Absen. Setelah tombol ditekan, sistem memakai satu foto diam dan preview kamera dihentikan sampai proses selesai.
           </p>
         </div>
 
@@ -423,6 +427,14 @@ export default function CameraAttendance({
             muted
             autoPlay
           />
+
+          {capturedImageUrl && (status === "capturing" || status === "paused") ? (
+            <img
+              className="cameraSnapshotImage attendanceSnapshotImage"
+              src={capturedImageUrl}
+              alt="Foto wajah yang sedang diproses untuk absensi"
+            />
+          ) : null}
 
           <div className="faceGuideLayer" aria-hidden="true">
             <div className="faceGuideOval">
@@ -461,19 +473,24 @@ export default function CameraAttendance({
             </div>
           )}
 
+          {status === "capturing" && (
+            <div className="cameraOverlay">
+              <span>Mencocokkan wajah dari foto yang diambil...</span>
+            </div>
+          )}
+
+          {status === "paused" && (
+            <div className="cameraOverlay">
+              <span>Preview kamera berhenti. Tekan Ambil Absen untuk membuka ulang kamera.</span>
+            </div>
+          )}
+
           {status === "error" && (
             <div className="cameraOverlay error">
               <span>{errorMessage}</span>
             </div>
           )}
         </div>
-
-        {capturedImageUrl ? (
-          <div className="attendanceSnapshotPreview">
-            <span>Foto yang dipakai untuk absensi</span>
-            <img src={capturedImageUrl} alt="Foto wajah yang dipakai untuk absensi" />
-          </div>
-        ) : null}
 
         <div className="cameraActions">
           {(status === "idle" || status === "error") && (
@@ -498,7 +515,18 @@ export default function CameraAttendance({
             </button>
           )}
 
-          {status === "ready" && (
+          {status === "paused" && (
+            <button
+              type="button"
+              className="primaryButton"
+              onClick={startCamera}
+              disabled={isBusy}
+            >
+              Ambil Absen
+            </button>
+          )}
+
+          {(status === "ready" || isCameraPaused) && (
             <button
               type="button"
               className="ghostButton"
