@@ -40,6 +40,15 @@ function cleanString(value: unknown, fallback = "") {
   return asString(value, fallback).trim();
 }
 
+function stripImageDataUrlPrefix(value: string) {
+  return value.replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, "");
+}
+
+function imageDataUrlFromBase64(base64: string, mimeType = "image/jpeg") {
+  const cleanBase64 = stripImageDataUrlPrefix(base64).trim();
+  return cleanBase64 ? `data:${mimeType || "image/jpeg"};base64,${cleanBase64}` : "";
+}
+
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
@@ -282,16 +291,22 @@ function mapMeetingFromRaw(meetingId: string, raw: Record<string, unknown>): Mee
 
   const presenceCount = Object.keys(presences).length;
 
+  const meetingImageBase64 = cleanString(raw.meetingImageBase64);
+  const meetingImageMimeType = cleanString(raw.meetingImageMimeType, meetingImageBase64 ? "image/jpeg" : "");
+  const legacyMeetingImageUrl = cleanString(raw.meetingImageUrl);
+
   return {
     meetingId: cleanString(raw.meetingId, meetingId),
     meetingName: cleanString(raw.meetingName || raw.name || raw.title, meetingId),
     noDokumen: cleanString(raw.noDokumen),
-    meetingImageUrl: cleanString(raw.meetingImageUrl),
-    meetingImagePath: cleanString(raw.meetingImagePath || raw.meetingImageUrl),
+    meetingImageUrl: meetingImageBase64 ? imageDataUrlFromBase64(meetingImageBase64, meetingImageMimeType || "image/jpeg") : legacyMeetingImageUrl,
+    meetingImageBase64,
+    meetingImagePath: cleanString(raw.meetingImagePath),
     meetingImageFileName: cleanString(raw.meetingImageFileName),
-    meetingImageMimeType: cleanString(raw.meetingImageMimeType),
+    meetingImageMimeType,
     meetingImageSize: asNumber(raw.meetingImageSize),
     meetingImageUpdatedAt: raw.meetingImageUpdatedAt === null ? null : numberFromFirestore(raw.meetingImageUpdatedAt),
+    meetingImageStorage: cleanString(raw.meetingImageStorage),
     catatan: cleanString(raw.catatan),
     tanggal: cleanString(raw.tanggal),
     hari: cleanString(raw.hari),
@@ -1047,12 +1062,14 @@ export async function updateMeetingDirect(meetingId: string, params: {
   return updated;
 }
 export async function setMeetingImageMeta(meetingId: string, image: {
-  meetingImageUrl: string;
-  meetingImagePath: string;
+  meetingImageBase64?: string;
+  meetingImageUrl?: string;
+  meetingImagePath?: string;
   meetingImageFileName: string;
   meetingImageMimeType: string;
   meetingImageSize: number;
   meetingImageUpdatedAt: number;
+  meetingImageStorage?: string;
 } | null): Promise<Meeting> {
   const cleanMeetingId = cleanString(meetingId);
   if (!cleanMeetingId) throw new Error("meetingId wajib diisi.");
@@ -1063,20 +1080,24 @@ export async function setMeetingImageMeta(meetingId: string, image: {
   const now = millisNow();
   const patch: Record<string, unknown> = image
     ? {
-        meetingImageUrl: image.meetingImageUrl,
-        meetingImagePath: image.meetingImagePath,
+        meetingImageBase64: stripImageDataUrlPrefix(cleanString(image.meetingImageBase64 || image.meetingImageUrl)),
+        meetingImageUrl: FieldValue.delete(),
+        meetingImagePath: FieldValue.delete(),
         meetingImageFileName: image.meetingImageFileName,
-        meetingImageMimeType: image.meetingImageMimeType,
+        meetingImageMimeType: image.meetingImageMimeType || "image/jpeg",
         meetingImageSize: image.meetingImageSize,
         meetingImageUpdatedAt: image.meetingImageUpdatedAt,
+        meetingImageStorage: image.meetingImageStorage || "firestore-base64",
       }
     : {
         meetingImageUrl: FieldValue.delete(),
+        meetingImageBase64: FieldValue.delete(),
         meetingImagePath: FieldValue.delete(),
         meetingImageFileName: FieldValue.delete(),
         meetingImageMimeType: FieldValue.delete(),
         meetingImageSize: FieldValue.delete(),
         meetingImageUpdatedAt: FieldValue.delete(),
+        meetingImageStorage: FieldValue.delete(),
       };
 
   await firestoreDb().collection("meetings").doc(cleanMeetingId).set(

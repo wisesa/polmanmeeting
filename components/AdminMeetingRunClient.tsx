@@ -7,6 +7,7 @@ import type { Meeting } from "@/lib/firebase/schema";
 import { useToast } from "@/components/ToastProvider";
 import PresenceListLive from "@/components/PresenceListLive";
 import CameraAttendance from "@/components/CameraAttendance";
+import { prepareMeetingImageFile, prepareMeetingImageFromCanvas } from "@/components/meeting-image-client";
 
 type FacePersonOption = {
   name: string;
@@ -118,9 +119,17 @@ export default function AdminMeetingRunClient({
     if (file) setRemoveMeetingImage(false);
   }
 
-  function handleMeetingImageChange(event: ChangeEvent<HTMLInputElement>) {
+  async function handleMeetingImageChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0] || null;
-    setMeetingImageFile(file);
+
+    try {
+      setCameraError("");
+      const compressedFile = file ? await prepareMeetingImageFile(file) : null;
+      setMeetingImageFile(compressedFile);
+    } catch (error) {
+      setMeetingImageFile(null);
+      setCameraError(error instanceof Error ? error.message : "Gambar gagal diproses.");
+    }
   }
 
   async function openCamera() {
@@ -183,20 +192,14 @@ export default function AdminMeetingRunClient({
     }
 
     context.drawImage(video, 0, 0, width, height);
-    const blob = await new Promise<Blob | null>((resolve) =>
-      canvas.toBlob(resolve, "image/jpeg", 0.9),
-    );
 
-    if (!blob) {
-      setCameraError("Gagal membuat file gambar dari kamera.");
-      return;
+    try {
+      const file = await prepareMeetingImageFromCanvas(canvas);
+      setMeetingImageFile(file);
+      stopCamera();
+    } catch (error) {
+      setCameraError(error instanceof Error ? error.message : "Gagal membuat file gambar dari kamera.");
     }
-
-    const file = new File([blob], `kamera-meeting-${Date.now()}.jpg`, {
-      type: "image/jpeg",
-    });
-    setMeetingImageFile(file);
-    stopCamera();
   }
 
   async function syncMeetingImageIfNeeded(currentMeeting: Meeting) {
@@ -519,8 +522,8 @@ export default function AdminMeetingRunClient({
               <span className="muted small warningText">{cameraError}</span>
             ) : null}
             <span className="muted small">
-              Gambar dapat diambil dari file atau kamera. Sistem akan menyimpan
-              hasil kompres sekitar 200 KB di folder public/uploads/meetings.
+              Gambar dapat diambil dari file atau kamera. Sistem akan mengompres
+              gambar sekitar 200 KB dan menyimpannya ke Firebase Storage.
             </span>
           </div>
           <div className="formGrid two">

@@ -278,7 +278,20 @@ function addSignatureImage(doc: PDFKit.PDFDocument, data?: string, mime?: string
 }
 
 function getMeetingImageRef(meeting: Meeting) {
-  return nonEmpty(meeting.meetingImageUrl) || nonEmpty(meeting.meetingImagePath);
+  return nonEmpty(meeting.meetingImageBase64) || nonEmpty(meeting.meetingImageUrl) || nonEmpty(meeting.meetingImagePath);
+}
+
+function bufferFromBase64Image(value: string) {
+  const clean = nonEmpty(value);
+  if (!clean) return null;
+
+  try {
+    const base64 = clean.replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, "");
+    const buffer = Buffer.from(base64, "base64");
+    return buffer.length > 0 ? buffer : null;
+  } catch {
+    return null;
+  }
 }
 
 async function loadMeetingImageBuffer(meeting: Meeting) {
@@ -286,6 +299,14 @@ async function loadMeetingImageBuffer(meeting: Meeting) {
   if (!imageRef) return null;
 
   try {
+    if (nonEmpty(meeting.meetingImageBase64)) {
+      return bufferFromBase64Image(nonEmpty(meeting.meetingImageBase64));
+    }
+
+    if (/^data:image\/[a-zA-Z0-9.+-]+;base64,/i.test(imageRef)) {
+      return bufferFromBase64Image(imageRef);
+    }
+
     if (/^https?:\/\//i.test(imageRef)) {
       const response = await fetch(imageRef, { cache: "no-store" });
       if (!response.ok) return null;

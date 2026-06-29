@@ -107,11 +107,13 @@ export type Meeting = {
   meetingName: string;
   noDokumen?: string;
   meetingImageUrl?: string;
+  meetingImageBase64?: string;
   meetingImagePath?: string;
   meetingImageFileName?: string;
   meetingImageMimeType?: string;
   meetingImageSize?: number;
   meetingImageUpdatedAt?: number | null;
+  meetingImageStorage?: "firestore-base64" | "firebase-storage" | "vercel-blob" | "public" | string;
   catatan?: string;
   tanggal?: string;
   hari?: string;

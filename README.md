@@ -24,3 +24,7 @@ Aplikasi ini digunakan untuk mengelola undangan rapat, data wajah peserta, prese
 npm install
 npm run dev
 ```
+
+## Catatan gambar meeting
+
+Gambar meeting pada versi ini disimpan sebagai base64 langsung di dokumen Firestore. Tidak perlu membuat Firebase Storage bucket dan tidak perlu Vercel Blob. Gambar tetap dikompres di browser sebelum dikirim agar ukuran dokumen Firestore tidak membesar.
