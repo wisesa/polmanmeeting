@@ -5538,7 +5538,7 @@ body {
 .homeHeroPanel .heroMetric span {
   color: rgba(239, 246, 255, 0.96) !important;
   font-weight: 600 !important;
-}
+} 
 
 .homeHeroPanel .heroMetric::before {
   content: "" !important;
