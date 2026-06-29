@@ -886,6 +886,30 @@ button {
   margin-bottom: 18px;
 }
 
+.meetingTopBarActions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.meetingTopBarActions .ghostButton.small {
+  white-space: nowrap;
+}
+
+@media (max-width: 520px) {
+  .meetingTopBarActions {
+    gap: 8px;
+  }
+
+  .meetingTopBarActions .ghostButton.small {
+    min-height: 38px;
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+}
+
 .backButton,
 .refreshButton,
 .ghostButton {

@@ -88,10 +88,9 @@ export default async function DosenMeetingPage(context: { searchParams?: DosenMe
               const dateKey = getMeetingDateKey(meeting);
 
               return (
-                <Link
+                <article
                   key={meeting.meetingId}
-                  href={`/dosen/meeting/${encodeURIComponent(meeting.meetingId)}`}
-                  className="meetingCard"
+                  className="meetingCard staticCard"
                 >
                   <div className="cardTopline">
                     <span className={isActive ? "badge active" : "badge closed"}>{statusLabel(status)}</span>
@@ -121,11 +120,11 @@ export default async function DosenMeetingPage(context: { searchParams?: DosenMe
                     </div>
                   </div>
 
-                  <div className="cardFooter">
-                    <span>Detail dan Absen</span>
-                    <span aria-hidden="true">→</span>
+                  <div className="meetingCardActions wrapActions">
+                    <Link href={`/dosen/meeting/${encodeURIComponent(meeting.meetingId)}`} className="primaryButton small">Detail dan Absen</Link>
+                    <a href={`/api/export/meetings/${encodeURIComponent(meeting.meetingId)}`} className="ghostButton small" target="_blank" rel="noreferrer">Export PDF</a>
                   </div>
-                </Link>
+                </article>
               );
             })}
           </div>

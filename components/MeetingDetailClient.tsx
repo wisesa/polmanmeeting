@@ -388,41 +388,52 @@ export default function MeetingDetailClient({
     <main className="meetingDetailPage">
       <div className="meetingDetailShell">
         <div className="meetingTopBar">
-  <Link href={backHref} className="iconButton" aria-label="Kembali" title="Kembali">
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M15 18l-6-6 6-6" />
-    </svg>
-  </Link>
+          <Link href={backHref} className="iconButton" aria-label="Kembali" title="Kembali">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+          </Link>
 
-  <button
-    type="button"
-    className="iconButton"
-    onClick={() => loadData(false)}
-    disabled={isRefreshing}
-    aria-label="Refresh"
-    title="Refresh"
-  >
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-      className={isRefreshing ? "spinIcon" : ""}
-    >
-      <path d="M21 12a9 9 0 1 1-2.64-6.36" />
-      <path d="M21 3v6h-6" />
-    </svg>
-  </button>
-</div>
+          <div className="meetingTopBarActions">
+            <a
+              href={`/api/export/meetings/${encodeURIComponent(meetingId)}`}
+              className="ghostButton small"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Export PDF
+            </a>
+
+            <button
+              type="button"
+              className="iconButton"
+              onClick={() => loadData(false)}
+              disabled={isRefreshing}
+              aria-label="Refresh"
+              title="Refresh"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+                className={isRefreshing ? "spinIcon" : ""}
+              >
+                <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+                <path d="M21 3v6h-6" />
+              </svg>
+            </button>
+          </div>
+        </div>
 
         <section className="meetingHeroCard meetingHeroCardWide meetingDetailV2">
           <div className="meetingDetailLeftPanel meetingDetailLeftPanelV2">

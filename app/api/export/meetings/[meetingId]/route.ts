@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminRequest } from "@/lib/auth/admin-session";
+import { requireDosenRequest } from "@/lib/auth/dosen-session";
 import { getMeeting, getPresenceList, getRegisteredFaces } from "@/lib/firebase/db";
 import { buildMeetingPdf } from "@/lib/pdf/documents";
 import { makeSafeDocId } from "@/lib/utils/id";
@@ -11,9 +12,21 @@ type RouteContext = {
   params: Promise<{ meetingId: string }>;
 };
 
+async function requireMeetingExportRequest(request: NextRequest) {
+  try {
+    return await requireAdminRequest(request);
+  } catch {
+    try {
+      return await requireDosenRequest(request);
+    } catch {
+      throw new Error("Sesi admin atau dosen tidak valid. Silakan login ulang.");
+    }
+  }
+}
+
 export async function GET(request: NextRequest, context: RouteContext) {
   try {
-    await requireAdminRequest(request);
+    await requireMeetingExportRequest(request);
     const params = await Promise.resolve(context.params);
     const meetingId = decodeURIComponent(params.meetingId || "").trim();
     const meeting = await getMeeting(meetingId);
@@ -36,7 +49,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "PDF meeting gagal dibuat.";
-    const status = message.includes("Sesi admin") ? 401 : 500;
+    const status = message.includes("Sesi admin") || message.includes("Sesi dosen") ? 401 : 500;
     return NextResponse.json({ success: false, message }, { status });
   }
 }
