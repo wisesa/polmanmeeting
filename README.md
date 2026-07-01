@@ -1,30 +1,18 @@
-# Polman Meeting
+Patch: filter meeting dosen bypass login check
 
-Aplikasi ini digunakan untuk mengelola undangan rapat, data wajah peserta, presensi dosen, hasil rapat, dan dokumen rapat.
+File yang diganti:
+1. app/dosen/meeting/page.tsx
+   - Mengembalikan filter lama berbasis tanggal.
+   - Menghapus requireDosenSession hanya pada halaman daftar/filter meeting.
+   - Detail meeting dan absen tetap diarahkan ke halaman detail yang masih punya pengecekan login.
 
-## Alur Penggunaan
+2. components/MeetingDateFilter.tsx
+   - Tetap memakai filter tanggal lama.
+   - Memperbaiki router.replace dari root / menjadi pathname aktif, sehingga filter tetap di /dosen/meeting?date=YYYY-MM-DD.
 
-1. Admin masuk melalui halaman admin.
-2. Admin mengisi program studi, data wajah, undangan, dan jadwal meeting.
-3. Dosen masuk menggunakan wajah.
-4. Setelah berhasil masuk, dosen tidak perlu login ulang selama belum menekan tombol logout.
-5. Dosen dapat membuka menu Ganti Profil untuk memperbarui nama, jabatan, prodi, foto wajah, dan tanda tangan.
-6. Dosen dapat membuka menu Meeting untuk melihat jadwal dan melakukan presensi.
+3. app/api/meetings/route.ts
+   - GET daftar meeting tidak lagi mewajibkan sesi admin/dosen.
+   - POST tambah meeting tetap wajib sesi admin.
 
-## Catatan Penting
-
-- Pastikan kamera perangkat diizinkan saat login atau presensi.
-- Pastikan data wajah dosen sudah pernah didaftarkan oleh admin.
-- Preview wajah dan tanda tangan tetap ditampilkan walaupun dosen tidak menggantinya.
-- File rahasia aplikasi tidak disertakan dalam paket ini. Gunakan `.env.example` sebagai contoh pengisian konfigurasi.
-
-## Menjalankan Aplikasi
-
-```bash
-npm install
-npm run dev
-```
-
-## Catatan gambar meeting
-
-Gambar meeting pada versi ini disimpan sebagai base64 langsung di dokumen Firestore. Tidak perlu membuat Firebase Storage bucket dan tidak perlu Vercel Blob. Gambar tetap dikompres di browser sebelum dikirim agar ukuran dokumen Firestore tidak membesar.
+Pengecekan:
+- npx tsc --noEmit --pretty false: lulus tanpa error.

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminRequest } from "@/lib/auth/admin-session";
-import { requireMeetingReadRequest } from "@/lib/auth/read-session";
 import { createMeetingDirect, getMeetings, setMeetingImageMeta } from "@/lib/firebase/db";
 import { getMeetingDateKey, isValidDateKey, todayDateKey } from "@/lib/utils/date";
 import { deletePublicMeetingImage, saveCompressedMeetingImage, validateMeetingImageFile } from "@/lib/utils/meeting-image";
@@ -41,7 +40,6 @@ async function readMeetingPayload(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    await requireMeetingReadRequest(request);
     const dateParam = request.nextUrl.searchParams.get("date");
     const selectedDate = dateParam ? (isValidDateKey(dateParam) ? dateParam : todayDateKey()) : null;
     const allMeetings = await getMeetings("meetings");
@@ -79,7 +77,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Gagal memuat meeting.";
-    return NextResponse.json({ ok: false, success: false, message }, { status: message.includes("Sesi") ? 401 : 500 });
+    return NextResponse.json({ ok: false, success: false, message }, { status: 500 });
   }
 }
 

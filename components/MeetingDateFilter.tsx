@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTransition, type ChangeEvent } from "react";
 
 export default function MeetingDateFilter({
@@ -17,13 +17,14 @@ export default function MeetingDateFilter({
   totalCount: number;
 }) {
   const router = useRouter();
+  const pathname = usePathname() || "/dosen/meeting";
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
 
   function setDate(value: string) {
     const params = new URLSearchParams(searchParams.toString());
     params.set("date", value || todayDate);
-    startTransition(() => router.replace(`/?${params.toString()}`));
+    startTransition(() => router.replace(`${pathname}?${params.toString()}`));
   }
 
   function goToday() {

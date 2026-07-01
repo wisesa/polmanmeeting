@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { requireDosenSession } from "@/lib/auth/dosen-session";
 import { getMeetings } from "@/lib/firebase/db";
 import MeetingDateFilter from "@/components/MeetingDateFilter";
 import {
@@ -29,7 +28,6 @@ function statusLabel(status?: string) {
 }
 
 export default async function DosenMeetingPage(context: { searchParams?: DosenMeetingSearchParams }) {
-  await requireDosenSession("/dosen/meeting");
   const searchParams = context.searchParams ? await context.searchParams : undefined;
   const selectedDate = pickDateParam(searchParams);
   const todayDate = todayDateKey();
